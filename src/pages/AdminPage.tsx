@@ -60,7 +60,7 @@ export default function AdminPage() {
   async function doAddPoints(phone: string, pts: number) {
     setState('result'); setProcessing(true); setResult(null);
     try {
-      await addPoint(phone, PIN, pts);
+      await addPoint(phone, pts);
       const updated = await findCustomer(phone);
       const label = pts === 1 ? 'نقطة واحدة' : `${pts} نقاط`;
       setResult({

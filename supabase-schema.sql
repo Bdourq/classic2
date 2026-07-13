@@ -21,29 +21,12 @@ create table if not exists points_log (
 
 create index if not exists idx_points_log_phone on points_log(phone);
 
--- 3) جدول إعدادات الكافيه (PIN الكاشير — لا يُقرأ مباشرة بسبب RLS)
-create table if not exists cafe_config (
-  key text primary key,
-  value text not null
-);
-
--- ⚠️ غيّر '1234' إلى PIN الكاشير الذي اخترته قبل تشغيل هذا الملف
-insert into cafe_config (key, value) values ('cashier_pin', '1234')
-  on conflict (key) do update set value = excluded.value;
-
--- 4) دالة إضافة نقاط — كل دينار = نقطة، تتحقق من PIN الكاشير على جانب الخادم
--- p_amount: عدد النقاط المراد إضافتها (= قيمة الفاتورة بالدينار مقرّبة للأسفل)
-create or replace function add_point(p_phone text, p_pin text, p_amount integer default 1)
+-- 3) دالة إضافة نقاط من الكاشير — كل دينار = نقطة
+-- التحقق من PIN يتم في المتصفح فقط (لوحة الكاشير لا تُفتح بدونه)
+create or replace function add_point(p_phone text, p_amount integer default 1)
 returns void language plpgsql security definer as
 $$
-declare
-  stored_pin text;
 begin
-  select value into stored_pin from cafe_config where key = 'cashier_pin';
-  if stored_pin is null or p_pin <> stored_pin then
-    raise exception 'Unauthorized: invalid cashier PIN';
-  end if;
-
   if p_amount <= 0 then
     raise exception 'قيمة النقاط يجب أن تكون أكبر من صفر';
   end if;
@@ -56,10 +39,10 @@ begin
 end;
 $$;
 
--- 5) دالة إضافة نقاط من جانب العميل — بدون PIN (العميل يُدخل قيمة مشترياته)
+-- 4) دالة إضافة نقاط من جانب العميل (نفس المنطق — بدون PIN)
 create or replace function add_points_customer(p_phone text, p_amount integer)
 returns void language plpgsql security definer as
-$
+$$
 begin
   if p_amount <= 0 then
     raise exception 'قيمة النقاط يجب أن تكون أكبر من صفر';
@@ -70,9 +53,9 @@ begin
   end if;
   insert into points_log (phone, action, points) values (p_phone, 'add', p_amount);
 end;
-$;
+$$;
 
--- 6) دالة استبدال قهوة مجانية (7 نقاط = قهوة) — لا تحتاج PIN لأنها تُستدعى من شاشة العميل
+-- 5) دالة استبدال قهوة مجانية (7 نقاط = قهوة)
 create or replace function redeem_coffee(p_phone text)
 returns void language plpgsql security definer as
 $$
@@ -94,7 +77,6 @@ $$;
 -- 6) أمان مستوى الصف (RLS)
 alter table customers enable row level security;
 alter table points_log enable row level security;
-alter table cafe_config enable row level security;
 
 -- الزبائن: قراءة وتسجيل للجميع
 drop policy if exists "read_customers" on customers;
@@ -106,9 +88,6 @@ create policy "insert_customers" on customers for insert with check (true);
 -- سجل النقاط: قراءة فقط للجميع (الكتابة تمر عبر الدوال SECURITY DEFINER فقط)
 drop policy if exists "read_points_log" on points_log;
 create policy "read_points_log" on points_log for select using (true);
-
--- الإعدادات: لا سياسات = لا يُقرأ/يُكتب مباشرة من العميل
--- القراءة تتم فقط من داخل دوال SECURITY DEFINER
 
 -- 7) البث اللحظي
 alter publication supabase_realtime add table customers;
