@@ -698,7 +698,16 @@ export default function AdminPage() {
                           }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                               <div>
-                                <span style={{ fontSize: '0.88rem', color: 'var(--text-primary)', direction: 'ltr', display: 'block' }}>
+                                {c.name && (
+                                  <span style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-primary)', display: 'block' }}>
+                                    {c.name}
+                                  </span>
+                                )}
+                                <span style={{
+                                  fontSize: c.name ? '0.78rem' : '0.88rem',
+                                  color: c.name ? 'var(--text-muted)' : 'var(--text-primary)',
+                                  direction: 'ltr', display: 'block',
+                                }}>
                                   {c.phone}
                                 </span>
                                 <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)' }}>
