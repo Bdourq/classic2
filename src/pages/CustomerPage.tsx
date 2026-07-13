@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, CSSProperties } from 'react';
-import { findCustomer, createCustomer, redeemCoffee, getPointsLog, subscribeToCustomer } from '../lib/db';
+import { findCustomer, createCustomer, getPointsLog, subscribeToCustomer } from '../lib/db';
 import { Customer, PointsLog } from '../types';
 
 const STORAGE_KEY = 'cc_phone';
@@ -96,10 +96,7 @@ export default function CustomerPage() {
 
   const [customer, setCustomer]   = useState<Customer | null>(null);
   const [log, setLog]             = useState<PointsLog[]>([]);
-  const [redeeming, setRedeeming]       = useState(false);
-  const [redeemMsg, setRedeemMsg]       = useState('');
-  const [redeemAmount, setRedeemAmount] = useState('');
-  const [logFilter, setLogFilter]       = useState<'all' | 'add' | 'redeem'>('all');
+  const [logFilter, setLogFilter] = useState<'all' | 'add' | 'redeem'>('all');
   const [errorMsg, setErrorMsg]   = useState('');
   const [flashNew, setFlashNew]   = useState(false);
   const [flashPoints, setFlashPoints] = useState(0);
@@ -167,21 +164,6 @@ export default function CustomerPage() {
     setStage('need-phone');
   }
 
-  async function handleRedeem(e: React.FormEvent) {
-    e.preventDefault();
-    const pts = Math.floor(parseFloat(redeemAmount) || 0);
-    if (!customer || pts <= 0 || pts > customer.points) return;
-    setRedeeming(true); setRedeemMsg('');
-    try {
-      await redeemCoffee(phone, pts);
-      const label = pts === 1 ? 'نقطة واحدة' : `${pts} نقاط`;
-      setRedeemMsg(`✅ تم استبدال ${label} بنجاح!`);
-      setRedeemAmount('');
-      await loadData(phone);
-    } catch (e: any) {
-      setRedeemMsg('❌ ' + (e?.message ?? 'خطأ أثناء الاستبدال'));
-    } finally { setRedeeming(false); }
-  }
 
   const pageStyle: CSSProperties = {
     minHeight: '100dvh',
@@ -263,65 +245,30 @@ export default function CustomerPage() {
 
         <PointsBadge points={customer.points} />
 
+        {/* عبارة تشجيعية */}
+        <p style={{ margin: '1.1rem 0 0', fontSize: '0.9rem', color: 'var(--text-muted)', lineHeight: 1.6 }}>
+          {customer.points === 0
+            ? 'أهلاً بك في Classic Cafe — نقاطك تبدأ من أول زيارة ☕'
+            : customer.points < 5
+            ? `رائع! لديك ${customer.points} ${customer.points === 1 ? 'نقطة' : 'نقاط'} — استمر وتراكم المكافآت 🌟`
+            : customer.points < 10
+            ? `أنت على الطريق الصحيح! ${customer.points} نقاط تنتظر مكافأتها ✨`
+            : customer.points < 20
+            ? `${customer.points} نقطة! عميل مميز يستحق أفضل القهوة ☕🏆`
+            : `${customer.points} نقطة — أنت من أكثر عملائنا وفاءً، شكراً لك 💛`
+          }
+        </p>
+
         {flashNew && (
           <div style={{
-            marginTop: '1rem', padding: '0.6rem 1rem',
+            marginTop: '0.85rem', padding: '0.6rem 1rem',
             background: 'rgba(201,164,60,0.12)', border: '1px solid rgba(201,164,60,0.4)',
             borderRadius: '0.75rem', color: 'var(--gold-300)', fontWeight: 700, fontSize: '0.92rem',
           }}>
-            +{flashPoints} {flashPoints === 1 ? 'نقطة جديدة' : 'نقاط جديدة'}! ☕
+            +{flashPoints} {flashPoints === 1 ? 'نقطة جديدة أُضيفت' : 'نقاط جديدة أُضيفت'}! ☕
           </div>
         )}
       </div>
-
-      {/* بطاقة الاستبدال */}
-      {customer.points > 0 && (
-        <div className="cc-card anim-in" style={{ width: '100%', maxWidth: '420px', marginTop: '0.85rem', padding: '1.5rem' }}>
-          <p style={{ margin: '0 0 0.25rem', fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.98rem' }}>
-            🎁 استبدال النقاط
-          </p>
-          <p style={{ margin: '0 0 1rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-            رصيدك الحالي: <b style={{ color: 'var(--gold-300)' }}>{customer.points}</b> نقطة — أدخل عدد النقاط التي تريد استبدالها
-          </p>
-
-          <form onSubmit={handleRedeem} style={{ display: 'flex', gap: '0.5rem' }}>
-            <input
-              className="cc-input"
-              type="number"
-              inputMode="numeric"
-              min="1"
-              max={customer.points}
-              placeholder={`من 1 إلى ${customer.points}`}
-              value={redeemAmount}
-              onChange={(e) => { setRedeemAmount(e.target.value); setRedeemMsg(''); }}
-              style={{ flex: 1, marginBottom: 0 }}
-            />
-            <button
-              className="cc-btn-gold"
-              type="submit"
-              disabled={redeeming || Math.floor(parseFloat(redeemAmount) || 0) <= 0 || Math.floor(parseFloat(redeemAmount) || 0) > customer.points}
-              style={{ flexShrink: 0, padding: '0 1.1rem' }}
-            >
-              {redeeming
-                ? <span className="spinner" style={{ borderTopColor: 'var(--dark-900)', width: 16, height: 16, borderWidth: 2 }} />
-                : 'استبدال'}
-            </button>
-          </form>
-
-          {redeemMsg && (
-            <div style={{
-              marginTop: '0.75rem', padding: '0.6rem 1rem',
-              background: redeemMsg.startsWith('❌') ? 'rgba(229,115,115,0.1)' : 'rgba(201,164,60,0.1)',
-              border: `1px solid ${redeemMsg.startsWith('❌') ? 'rgba(229,115,115,0.35)' : 'rgba(201,164,60,0.35)'}`,
-              borderRadius: '0.75rem',
-              color: redeemMsg.startsWith('❌') ? '#E57373' : 'var(--gold-300)',
-              fontWeight: 600, fontSize: '0.9rem',
-            }}>
-              {redeemMsg}
-            </div>
-          )}
-        </div>
-      )}
 
 
       {/* السجل الكامل */}
