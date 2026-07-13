@@ -32,3 +32,14 @@ outputType = "webview"
 [[ports]]
 localPort = 5000
 externalPort = 80
+
+[[ports]]
+localPort = 5001
+externalPort = 3001
+
+[userenv]
+
+[userenv.shared]
+VITE_CASHIER_PIN = "1993"
+VITE_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6cm52aHhwc2d1YWxyZWt0YmFxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM5MzkwNjEsImV4cCI6MjA5OTUxNTA2MX0.4lgpV-jw88Yk9iLF6Gc99wQDEnlkhnl_3ucsLk6hOoA"
+VITE_SUPABASE_URL = "https://tzrnvhxpsgualrektbaq.supabase.co"
