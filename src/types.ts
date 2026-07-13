@@ -4,6 +4,8 @@ export interface Customer {
   createdAt: string;
   /** تاريخ آخر مرة أُضيفت له نقاط — أو تاريخ انضمامه إذا لم تُضف له نقاط بعد */
   lastAddAt?: string;
+  /** اسم العميل — اختياري، يُدخله العميل عند أول تسجيل */
+  name?: string | null;
 }
 
 export interface PointsLog {

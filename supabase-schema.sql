@@ -7,8 +7,11 @@
 create table if not exists customers (
   phone text primary key,
   points integer not null default 0,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  name text
 );
+
+alter table customers add column if not exists name text;
 
 -- 2) سجل النقاط
 create table if not exists points_log (
@@ -61,7 +64,7 @@ $$;
 -- 5) عرض العملاء مع تاريخ آخر إضافة نقاط (أو تاريخ الانضمام إن لم تُضف له نقاط)
 create or replace view customers_with_activity as
 select
-  c.phone, c.points, c.created_at,
+  c.phone, c.points, c.created_at, c.name,
   coalesce(
     (select max(pl.created_at) from points_log pl where pl.phone = c.phone and pl.action = 'add'),
     c.created_at

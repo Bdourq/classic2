@@ -132,6 +132,7 @@ export default function CustomerPage() {
   const [stage, setStage]         = useState<Stage>('loading');
   const [phone, setPhone]         = useState<string>('');
   const [phoneInput, setPhoneInput] = useState('');
+  const [nameInput, setNameInput] = useState('');
   const [phoneErr, setPhoneErr]   = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -141,10 +142,10 @@ export default function CustomerPage() {
   const [flashNew, setFlashNew]   = useState(false);
   const [flashPoints, setFlashPoints] = useState(0);
 
-  const loadData = useCallback(async (p: string, flash = false) => {
+  const loadData = useCallback(async (p: string, flash = false, name?: string) => {
     try {
       let c = await findCustomer(p);
-      if (!c) c = await createCustomer(p);
+      if (!c) c = await createCustomer(p, name);
       setCustomer(prev => {
         if (flash && prev && c!.points > prev.points) {
           setFlashPoints(c!.points - prev.points);
@@ -195,12 +196,12 @@ export default function CustomerPage() {
     localStorage.setItem(STORAGE_KEY, cleaned);
     setPhone(cleaned);
     setStage('loading');
-    loadData(cleaned).finally(() => setSubmitting(false));
+    loadData(cleaned, false, nameInput).finally(() => setSubmitting(false));
   }
 
   function changeNumber() {
     localStorage.removeItem(STORAGE_KEY);
-    setCustomer(null); setLog([]); setPhone(''); setPhoneInput('');
+    setCustomer(null); setLog([]); setPhone(''); setPhoneInput(''); setNameInput('');
     setStage('need-phone');
   }
 
@@ -226,12 +227,20 @@ export default function CustomerPage() {
         <form onSubmit={handlePhoneSubmit}>
           <input
             className="cc-input"
+            type="text"
+            placeholder="اسمك (اختياري)"
+            value={nameInput}
+            onChange={(e) => setNameInput(e.target.value)}
+            autoFocus
+            style={{ marginBottom: '0.75rem' }}
+          />
+          <input
+            className="cc-input"
             type="tel"
             inputMode="tel"
             placeholder="07XXXXXXXX"
             value={phoneInput}
             onChange={(e) => setPhoneInput(e.target.value)}
-            autoFocus
             dir="ltr"
             style={{ marginBottom: phoneErr ? '0.5rem' : '1.25rem' }}
           />
@@ -277,7 +286,7 @@ export default function CustomerPage() {
         style={{ width: '100%', maxWidth: '420px', padding: '2rem', textAlign: 'center' }}
       >
         <p style={{ margin: '0 0 0.2rem', fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)' }}>
-          أهلاً بك، •• {last4}
+          {customer.name ? `أهلاً بك، ${customer.name} ☕` : `أهلاً بك، •• ${last4}`}
         </p>
         <p style={{ margin: '0 0 1.5rem', fontSize: '0.78rem', color: 'var(--text-dim)' }}>
           رقم العضوية المرتبط بهاتفك

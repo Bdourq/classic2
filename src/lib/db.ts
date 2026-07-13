@@ -11,17 +11,17 @@ export async function findCustomer(phone: string): Promise<Customer | null> {
     .maybeSingle();
   if (error) throw error;
   if (!data) return null;
-  return { phone: data.phone, points: data.points, createdAt: data.created_at };
+  return { phone: data.phone, points: data.points, createdAt: data.created_at, name: data.name };
 }
 
-export async function createCustomer(phone: string): Promise<Customer> {
+export async function createCustomer(phone: string, name?: string): Promise<Customer> {
   const { data, error } = await supabase
     .from('customers')
-    .insert({ phone, points: 0 })
+    .insert({ phone, points: 0, name: name?.trim() || null })
     .select('*')
     .single();
   if (error) throw error;
-  return { phone: data.phone, points: data.points, createdAt: data.created_at };
+  return { phone: data.phone, points: data.points, createdAt: data.created_at, name: data.name };
 }
 
 export async function getAllCustomers(): Promise<Customer[]> {
@@ -35,6 +35,7 @@ export async function getAllCustomers(): Promise<Customer[]> {
     points: r.points,
     createdAt: r.created_at,
     lastAddAt: r.last_add_at,
+    name: r.name,
   }));
 }
 

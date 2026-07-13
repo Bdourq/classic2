@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, FormEvent } from 'react';
-import { findCustomer, addPoint, redeemCoffee, getAllCustomers, deleteCustomer } from '../lib/db';
-import { Customer } from '../types';
+import { findCustomer, addPoint, redeemCoffee, getAllCustomers, deleteCustomer, getPointsLog } from '../lib/db';
+import { Customer, PointsLog } from '../types';
 import QRScanner from '../components/QRScanner';
 import Header from '../components/Header';
 
@@ -51,6 +51,7 @@ export default function AdminPage() {
   // lookup & redeem
   const [lookupPhone, setLookupPhone]       = useState('');
   const [lookupCustomer, setLookupCustomer] = useState<Customer | null>(null);
+  const [lookupLog, setLookupLog]           = useState<PointsLog[]>([]);
   const [lookupLoading, setLookupLoading]   = useState(false);
   const [lookupError, setLookupError]       = useState('');
   const [redeeming, setRedeeming]           = useState(false);
@@ -182,11 +183,14 @@ export default function AdminPage() {
     e.preventDefault();
     const phone = lookupPhone.replace(/\s+/g, '').trim();
     if (!phone) return;
-    setLookupLoading(true); setLookupError(''); setLookupCustomer(null); setRedeemMsg('');
+    setLookupLoading(true); setLookupError(''); setLookupCustomer(null); setLookupLog([]); setRedeemMsg('');
     try {
       const c = await findCustomer(phone);
       if (!c) { setLookupError('العميل غير مسجّل'); }
-      else { setLookupCustomer(c); }
+      else {
+        setLookupCustomer(c);
+        setLookupLog(await getPointsLog(phone));
+      }
     } catch (e: any) {
       setLookupError(e?.message ?? 'خطأ أثناء الاستعلام');
     } finally { setLookupLoading(false); }
@@ -214,6 +218,7 @@ export default function AdminPage() {
       await redeemCoffee(lookupCustomer.phone, REDEEM_GOAL);
       const updated = await findCustomer(lookupCustomer.phone);
       setLookupCustomer(updated);
+      setLookupLog(await getPointsLog(lookupCustomer.phone));
       setRedeemMsg('✅ تم الاستبدال — خُصمت 7 نقاط بنجاح');
     } catch (e: any) {
       setRedeemMsg('❌ ' + (e?.message ?? 'خطأ أثناء الاستبدال'));
@@ -410,9 +415,16 @@ export default function AdminPage() {
                 borderRadius: '0.85rem', padding: '1rem 1.25rem', marginBottom: '1rem',
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
               }}>
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', direction: 'ltr' }}>
-                  {lookupCustomer.phone}
-                </span>
+                <div>
+                  {lookupCustomer.name && (
+                    <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)', display: 'block', marginBottom: '0.15rem' }}>
+                      {lookupCustomer.name}
+                    </span>
+                  )}
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', direction: 'ltr', display: 'block' }}>
+                    {lookupCustomer.phone}
+                  </span>
+                </div>
                 <span style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--gold-300)' }}>
                   {lookupCustomer.points} / {REDEEM_GOAL} نقاط
                 </span>
@@ -451,6 +463,49 @@ export default function AdminPage() {
                   {redeemMsg}
                 </div>
               )}
+
+              {/* سجل الإضافات والاستبدالات */}
+              {(() => {
+                const additions   = lookupLog.filter(l => l.action === 'add');
+                const redemptions = lookupLog.filter(l => l.action === 'redeem');
+                const fmt = (iso: string) => new Date(iso).toLocaleString('ar-JO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+                const renderRows = (rows: PointsLog[], color: string) => (
+                  <div style={{ maxHeight: '180px', overflowY: 'auto' }}>
+                    {rows.map((l, i) => (
+                      <div key={l.id} style={{
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        padding: '0.4rem 0.1rem',
+                        borderBottom: i < rows.length - 1 ? '1px solid rgba(201,164,60,0.08)' : 'none',
+                      }}>
+                        <span style={{ fontSize: '0.76rem', color: 'var(--text-dim)' }}>{fmt(l.createdAt)}</span>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 700, color }}>
+                          {l.action === 'add' ? '+' : '-'}{Math.abs(l.points)} نقطة
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                );
+                return (
+                  <div style={{ marginTop: '1.25rem', display: 'grid', gap: '0.9rem' }}>
+                    <div>
+                      <p style={{ margin: '0 0 0.4rem', fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-muted)' }}>
+                        📈 سجل الإضافات {additions.length ? `(${additions.length})` : ''}
+                      </p>
+                      {additions.length
+                        ? renderRows(additions, 'var(--gold-300)')
+                        : <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-dim)' }}>لا توجد إضافات بعد</p>}
+                    </div>
+                    <div>
+                      <p style={{ margin: '0 0 0.4rem', fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-muted)' }}>
+                        🎁 سجل الاستبدالات {redemptions.length ? `(${redemptions.length})` : ''}
+                      </p>
+                      {redemptions.length
+                        ? renderRows(redemptions, '#E5A05C')
+                        : <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-dim)' }}>لا توجد استبدالات بعد</p>}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           )}
         </div>
