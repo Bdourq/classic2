@@ -1,0 +1,6 @@
+{
+  "name": "Classic Coffee Loyalty",
+  "description": "Smart interactive loyalty system for Classic Coffee shop featuring QR code simulation, RTL design, and gold coffee cup points visualization.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
