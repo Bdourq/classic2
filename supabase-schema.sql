@@ -31,9 +31,11 @@ create table if not exists cafe_config (
 insert into cafe_config (key, value) values ('cashier_pin', '1234')
   on conflict (key) do update set value = excluded.value;
 
--- 4) دالة إضافة نقطة — تتحقق من PIN الكاشير على جانب الخادم
-create or replace function add_point(p_phone text, p_pin text)
-returns void language plpgsql security definer as $$
+-- 4) دالة إضافة نقاط — كل دينار = نقطة، تتحقق من PIN الكاشير على جانب الخادم
+-- p_amount: عدد النقاط المراد إضافتها (= قيمة الفاتورة بالدينار مقرّبة للأسفل)
+create or replace function add_point(p_phone text, p_pin text, p_amount integer default 1)
+returns void language plpgsql security definer as
+$$
 declare
   stored_pin text;
 begin
@@ -42,17 +44,22 @@ begin
     raise exception 'Unauthorized: invalid cashier PIN';
   end if;
 
-  update customers set points = points + 1 where phone = p_phone;
+  if p_amount <= 0 then
+    raise exception 'قيمة النقاط يجب أن تكون أكبر من صفر';
+  end if;
+
+  update customers set points = points + p_amount where phone = p_phone;
   if not found then
     raise exception 'العميل غير موجود: %', p_phone;
   end if;
-  insert into points_log (phone, action, points) values (p_phone, 'add', 1);
+  insert into points_log (phone, action, points) values (p_phone, 'add', p_amount);
 end;
 $$;
 
--- 5) دالة استبدال قهوة مجانية (10 نقاط) — لا تحتاج PIN لأنها تُستدعى من شاشة العميل
+-- 5) دالة استبدال قهوة مجانية (7 نقاط = قهوة) — لا تحتاج PIN لأنها تُستدعى من شاشة العميل
 create or replace function redeem_coffee(p_phone text)
-returns void language plpgsql security definer as $$
+returns void language plpgsql security definer as
+$$
 declare
   cur_points integer;
 begin
@@ -60,11 +67,11 @@ begin
   if cur_points is null then
     raise exception 'العميل غير موجود: %', p_phone;
   end if;
-  if cur_points < 10 then
+  if cur_points < 7 then
     raise exception 'نقاط غير كافية (الرصيد: %)', cur_points;
   end if;
-  update customers set points = points - 10 where phone = p_phone;
-  insert into points_log (phone, action, points) values (p_phone, 'redeem', -10);
+  update customers set points = points - 7 where phone = p_phone;
+  insert into points_log (phone, action, points) values (p_phone, 'redeem', -7);
 end;
 $$;
 

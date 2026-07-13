@@ -26,9 +26,9 @@ export async function createCustomer(phone: string): Promise<Customer> {
 
 // ─── النقاط ────────────────────────────────────────────────
 
-/** يضيف نقطة واحدة للزبون — يُرسل PIN للتحقق منه على جانب الخادم */
-export async function addPoint(phone: string, pin: string): Promise<void> {
-  const { error } = await supabase.rpc('add_point', { p_phone: phone, p_pin: pin });
+/** يضيف نقاطاً للزبون بناءً على قيمة المشتريات — كل دينار = نقطة */
+export async function addPoint(phone: string, pin: string, amount: number): Promise<void> {
+  const { error } = await supabase.rpc('add_point', { p_phone: phone, p_pin: pin, p_amount: amount });
   if (error) throw error;
 }
 

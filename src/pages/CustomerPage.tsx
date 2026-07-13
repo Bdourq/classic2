@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, FormEvent, CSSProperties } from 'reac
 import { findCustomer, createCustomer, redeemCoffee, getPointsLog, subscribeToCustomer } from '../lib/db';
 import { Customer, PointsLog } from '../types';
 
-const GOAL = 10;
+const GOAL = 7;
 const STORAGE_KEY = 'cc_phone';
 
 /* ─── دائرة التقدّم — النقاط الحالية من 10 ─────────────── */
@@ -43,7 +43,7 @@ function ProgressCircle({ points }: { points: number }) {
         }}>
           {Math.min(points, GOAL)}
         </span>
-        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.1rem' }}>من {GOAL} ☕</span>
+        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.1rem' }}>من {GOAL} نقاط ☕</span>
       </div>
     </div>
   );
@@ -104,13 +104,17 @@ export default function CustomerPage() {
   const [redeemMsg, setRedeemMsg] = useState('');
   const [errorMsg, setErrorMsg]   = useState('');
   const [flashNew, setFlashNew]   = useState(false);
+  const [flashPoints, setFlashPoints] = useState(0);
 
   const loadData = useCallback(async (p: string, flash = false) => {
     try {
       let c = await findCustomer(p);
       if (!c) c = await createCustomer(p);
       setCustomer(prev => {
-        if (flash && prev && c!.points > prev.points) setFlashNew(true);
+        if (flash && prev && c!.points > prev.points) {
+          setFlashPoints(c!.points - prev.points);
+          setFlashNew(true);
+        }
         return c;
       });
       const l = await getPointsLog(p);
@@ -170,7 +174,7 @@ export default function CustomerPage() {
     setRedeeming(true); setRedeemMsg('');
     try {
       await redeemCoffee(phone);
-      setRedeemMsg('✅ تم استبدال 10 نقاط — استمتع بقهوتك!');
+      setRedeemMsg('✅ تم استبدال 7 نقاط — استمتع بقهوتك!');
       await loadData(phone);
     } catch (e: any) {
       setRedeemMsg('❌ ' + (e?.message ?? 'خطأ أثناء الاستبدال'));
@@ -263,7 +267,7 @@ export default function CustomerPage() {
 
         <p style={{ margin: '1.25rem 0 0', fontSize: '0.95rem', color: 'var(--text-muted)' }}>
           {canRedeem
-            ? <span style={{ color: 'var(--gold-300)', fontWeight: 700 }}>🎉 وصلت لعشر نقاط — قهوتك المجانية جاهزة!</span>
+            ? <span style={{ color: 'var(--gold-300)', fontWeight: 700 }}>🎉 وصلت لـ {GOAL} نقاط — قهوتك المجانية جاهزة!</span>
             : <>باقي <b style={{ color: 'var(--gold-300)' }}>{remaining}</b> {remaining === 1 ? 'نقطة' : 'نقاط'} للقهوة المجانية</>
           }
         </p>
@@ -274,7 +278,7 @@ export default function CustomerPage() {
             background: 'rgba(201,164,60,0.12)', border: '1px solid rgba(201,164,60,0.4)',
             borderRadius: '0.75rem', color: 'var(--gold-300)', fontWeight: 700, fontSize: '0.92rem',
           }}>
-            +1 نقطة جديدة! ☕
+            +{flashPoints} {flashPoints === 1 ? 'نقطة جديدة' : 'نقاط جديدة'}! ☕
           </div>
         )}
 
@@ -325,7 +329,7 @@ export default function CustomerPage() {
                 fontWeight: 800, fontSize: '0.92rem',
                 color: entry.action === 'add' ? 'var(--gold-300)' : '#E57373',
               }}>
-                {entry.action === 'add' ? '+1 نقطة ☕' : '−10 نقاط 🎁'}
+                {entry.action === 'add' ? `+${entry.points} ${entry.points === 1 ? 'نقطة' : 'نقاط'} ☕` : `−${Math.abs(entry.points)} نقاط 🎁`}
               </span>
             </div>
           ))

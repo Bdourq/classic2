@@ -5,18 +5,16 @@ import QRScanner from '../components/QRScanner';
 import Header from '../components/Header';
 
 const PIN: string = import.meta.env.VITE_CASHIER_PIN ?? '';
+const REDEEM_GOAL = 7;
 
-type State = 'pin' | 'idle' | 'scanning' | 'result';
+type State = 'pin' | 'idle' | 'scanning' | 'awaiting-amount' | 'result';
 
-interface ScanResult {
+interface PointResult {
   phone: string;
   customer: Customer;
   success: boolean;
   message: string;
-}
-
-function cleanPhone(raw: string): string {
-  return raw.replace(/\s+/g, '').trim();
+  pointsAdded?: number;
 }
 
 function extractPhone(text: string): string {
@@ -29,13 +27,26 @@ function extractPhone(text: string): string {
 }
 
 export default function AdminPage() {
-  const [state, setState]       = useState<State>('pin');
-  const [pinInput, setPinInput] = useState('');
-  const [pinError, setPinError] = useState('');
-  const [result, setResult]     = useState<ScanResult | null>(null);
+  const [state, setState]           = useState<State>('pin');
+  const [pinInput, setPinInput]     = useState('');
+  const [pinError, setPinError]     = useState('');
+  const [result, setResult]         = useState<PointResult | null>(null);
   const [processing, setProcessing] = useState(false);
-  const [manualPhone, setManualPhone] = useState('');
 
+  // manual entry
+  const [manualPhone, setManualPhone] = useState('');
+  const [amount, setAmount]           = useState('');   // dinars entered by cashier
+
+  // after QR scan — waiting for amount
+  const [scannedPhone, setScannedPhone]       = useState('');
+  const [scannedCustomer, setScannedCustomer] = useState<Customer | null>(null);
+
+  /* ── حساب النقاط: كل دينار = نقطة واحدة ──────────────── */
+  function calcPoints(jd: string): number {
+    return Math.floor(parseFloat(jd) || 0);
+  }
+
+  /* ── تسجيل دخول الكاشير ───────────────────────────────── */
   function handlePin(e: FormEvent) {
     e.preventDefault();
     if (pinInput === PIN) {
@@ -45,41 +56,90 @@ export default function AdminPage() {
     }
   }
 
-  const handleScan = useCallback(async (text: string) => {
+  /* ── إضافة النقاط الفعلية ─────────────────────────────── */
+  async function doAddPoints(phone: string, pts: number) {
     setState('result'); setProcessing(true); setResult(null);
-    const phone = extractPhone(text);
     try {
-      const customer = await findCustomer(phone);
-      if (!customer) {
-        setResult({ phone, customer: { phone, points: 0, createdAt: '' }, success: false, message: `العميل ${phone} غير مسجّل` });
-        return;
-      }
-      await addPoint(phone, PIN);
+      await addPoint(phone, PIN, pts);
       const updated = await findCustomer(phone);
-      setResult({ phone, customer: updated!, success: true, message: `✓ نقطة أُضيفت — الرصيد: ${updated!.points}` });
+      const label = pts === 1 ? 'نقطة واحدة' : `${pts} نقاط`;
+      setResult({
+        phone,
+        customer: updated!,
+        success: true,
+        message: `✓ أُضيفت ${label} — الرصيد: ${updated!.points}`,
+        pointsAdded: pts,
+      });
     } catch (err: any) {
       const msg = err?.message ?? 'خطأ غير متوقع';
-      const isPinError = msg.toLowerCase().includes('pin') || msg.toLowerCase().includes('unauthorized');
+      const isPinErr = msg.toLowerCase().includes('pin') || msg.toLowerCase().includes('unauthorized');
       setResult({
         phone,
         customer: { phone, points: 0, createdAt: '' },
         success: false,
-        message: isPinError
-          ? 'فشل التحقق من رمز الكاشير — تأكد أن VITE_CASHIER_PIN مضبوط بنفس قيمة cashier_pin في Supabase'
+        message: isPinErr
+          ? 'فشل التحقق من رمز الكاشير — تأكد أن VITE_CASHIER_PIN مطابق لـ cashier_pin في Supabase'
           : msg,
       });
-    } finally { setProcessing(false); }
-  }, []);
-
-  function handleManualAdd(e: FormEvent) {
-    e.preventDefault();
-    const phone = cleanPhone(manualPhone);
-    if (!phone) return;
-    setManualPhone('');
-    handleScan(phone);
+    } finally {
+      setProcessing(false);
+    }
   }
 
-  /* ── شاشة PIN ───────────────────────── */
+  /* ── إدخال يدوي: هاتف + مبلغ ─────────────────────────── */
+  function handleManualSubmit(e: FormEvent) {
+    e.preventDefault();
+    const phone = manualPhone.replace(/\s+/g, '').trim();
+    const pts   = calcPoints(amount);
+    if (!phone || pts <= 0) return;
+    setManualPhone(''); setAmount('');
+    doAddPoints(phone, pts);
+  }
+
+  /* ── مسح QR: تحديد الهاتف ثم طلب المبلغ ─────────────── */
+  const handleScan = useCallback(async (text: string) => {
+    setProcessing(true);
+    const phone = extractPhone(text);
+    try {
+      const customer = await findCustomer(phone);
+      if (!customer) {
+        setState('result');
+        setResult({
+          phone,
+          customer: { phone, points: 0, createdAt: '' },
+          success: false,
+          message: `العميل ${phone} غير مسجّل`,
+        });
+        return;
+      }
+      setScannedPhone(phone);
+      setScannedCustomer(customer);
+      setAmount('');
+      setState('awaiting-amount');
+    } catch (err: any) {
+      setState('result');
+      setResult({
+        phone,
+        customer: { phone, points: 0, createdAt: '' },
+        success: false,
+        message: err?.message ?? 'خطأ غير متوقع',
+      });
+    } finally {
+      setProcessing(false);
+    }
+  }, []);
+
+  /* ── تأكيد المبلغ بعد المسح ──────────────────────────── */
+  function handleAmountConfirm(e: FormEvent) {
+    e.preventDefault();
+    const pts = calcPoints(amount);
+    if (pts <= 0) return;
+    doAddPoints(scannedPhone, pts);
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     شاشة PIN
+  ═══════════════════════════════════════════════════════ */
   if (state === 'pin') return (
     <div style={{
       minHeight: '100dvh',
@@ -124,7 +184,9 @@ export default function AdminPage() {
     </div>
   );
 
-  /* ── شاشة الكاشير الرئيسية ─────────── */
+  /* ═══════════════════════════════════════════════════════
+     شاشة الكاشير الرئيسية
+  ═══════════════════════════════════════════════════════ */
   return (
     <div style={{
       minHeight: '100dvh',
@@ -135,74 +197,157 @@ export default function AdminPage() {
 
       <Header
         start={
-          <button
-            className="cc-btn-ghost"
-            onClick={() => { setState('pin'); setPinInput(''); }}
-          >
+          <button className="cc-btn-ghost" onClick={() => { setState('pin'); setPinInput(''); }}>
             🔒 قفل
           </button>
         }
       />
 
-      {/* بطاقة الكاشير */}
-      <div className="cc-card anim-in" style={{ width: '100%', maxWidth: '440px', marginTop: '1.25rem', padding: '2rem' }}>
-        <p style={{ margin: '0 0 0.2rem', fontSize: '0.85rem', color: 'var(--text-muted)', letterSpacing: '1.5px', textAlign: 'center' }}>
-          CLASSIC CAFE — CASHIER
-        </p>
+      {/* ── بطاقة الإضافة اليدوية ─────────────────────── */}
+      {state === 'idle' && (
+        <div className="cc-card anim-in" style={{ width: '100%', maxWidth: '440px', marginTop: '1.25rem', padding: '2rem' }}>
+          <p style={{ margin: '0 0 0.15rem', fontSize: '0.85rem', color: 'var(--text-muted)', letterSpacing: '1.5px', textAlign: 'center' }}>
+            CLASSIC CAFE — CASHIER
+          </p>
 
-        <div className="cc-divider" style={{ margin: '0.85rem auto 1.5rem' }} />
+          <div className="cc-divider" style={{ margin: '0.85rem auto 1.75rem' }} />
 
-        {/* إدخال رقم الهاتف يدوياً */}
-        <p style={{ margin: '0 0 0.75rem', fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-          إضافة نقطة برقم الهاتف
-        </p>
-        <form onSubmit={handleManualAdd} style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
-          <input
-            className="cc-input"
-            type="tel"
-            inputMode="numeric"
-            placeholder="07xxxxxxxx"
-            value={manualPhone}
-            onChange={(e) => setManualPhone(e.target.value)}
-            style={{ flex: 1, marginBottom: 0, direction: 'ltr', textAlign: 'left' }}
-          />
+          {/* معادلة النقاط */}
+          <div style={{
+            background: 'rgba(201,164,60,0.07)', border: '1px solid rgba(201,164,60,0.22)',
+            borderRadius: '0.85rem', padding: '0.75rem 1rem', marginBottom: '1.5rem',
+            fontSize: '0.83rem', color: 'var(--gold-300)', textAlign: 'center', lineHeight: 1.7,
+          }}>
+            كل <b>دينار</b> = <b>1 نقطة</b> &nbsp;·&nbsp; كل <b>{REDEEM_GOAL} نقاط</b> = قهوة مجانية ☕
+          </div>
+
+          {/* إدخال يدوي */}
+          <p style={{ margin: '0 0 0.6rem', fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+            إضافة نقاط يدوياً
+          </p>
+          <form onSubmit={handleManualSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', marginBottom: '1.5rem' }}>
+            <input
+              className="cc-input"
+              type="tel"
+              inputMode="numeric"
+              placeholder="رقم هاتف العميل"
+              value={manualPhone}
+              onChange={(e) => setManualPhone(e.target.value)}
+              style={{ marginBottom: 0, direction: 'ltr', textAlign: 'left' }}
+            />
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <input
+                className="cc-input"
+                type="number"
+                inputMode="decimal"
+                min="1"
+                step="0.5"
+                placeholder="قيمة المشتريات (دينار)"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                style={{ flex: 1, marginBottom: 0 }}
+              />
+              {amount && parseFloat(amount) > 0 && (
+                <span style={{
+                  flexShrink: 0, padding: '0 0.75rem',
+                  fontSize: '0.82rem', color: 'var(--gold-300)',
+                  fontWeight: 700, whiteSpace: 'nowrap',
+                }}>
+                  = {calcPoints(amount)} نقطة
+                </span>
+              )}
+            </div>
+            <button
+              className="cc-btn-gold"
+              type="submit"
+              disabled={!manualPhone.trim() || calcPoints(amount) <= 0}
+            >
+              إضافة النقاط ✓
+            </button>
+          </form>
+
+          {/* فاصل */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
+            <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-dim)' }}>أو</span>
+            <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+          </div>
+
           <button
             className="cc-btn-gold"
-            type="submit"
-            style={{ padding: '0 1.25rem', whiteSpace: 'nowrap', flexShrink: 0 }}
-            disabled={!manualPhone.trim()}
+            style={{ fontSize: '1.1rem', padding: '1rem', maxWidth: 280, margin: '0 auto' }}
+            onClick={() => { setState('scanning'); setResult(null); }}
           >
-            إضافة ✓
+            📷 مسح QR
           </button>
-        </form>
-
-        {/* فاصل */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
-          <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-          <span style={{ fontSize: '0.78rem', color: 'var(--text-dim)' }}>أو</span>
-          <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
         </div>
+      )}
 
-        <p style={{ margin: '0 0 1rem', fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-primary)', textAlign: 'center' }}>
-          مسح رمز QR
-          <br />
-          <span style={{ fontSize: '0.82rem', fontWeight: 400, color: 'var(--text-muted)' }}>
-            تُضاف نقطة واحدة تلقائياً
-          </span>
-        </p>
+      {/* ── بطاقة إدخال المبلغ بعد مسح QR ──────────────── */}
+      {state === 'awaiting-amount' && scannedCustomer && (
+        <div className="cc-card anim-in" style={{ width: '100%', maxWidth: '440px', marginTop: '1.25rem', padding: '2rem' }}>
+          <p style={{ margin: '0 0 1rem', fontSize: '0.98rem', fontWeight: 700, color: 'var(--text-primary)', textAlign: 'center' }}>
+            تم التعرف على العميل
+          </p>
 
-        <button
-          className="cc-btn-gold"
-          style={{ fontSize: '1.1rem', padding: '1rem', maxWidth: 280, margin: '0 auto' }}
-          onClick={() => { setState('scanning'); setResult(null); }}
-        >
-          📷 مسح QR
-        </button>
-      </div>
+          <div style={{
+            background: 'rgba(201,164,60,0.07)', border: '1px solid rgba(201,164,60,0.22)',
+            borderRadius: '0.85rem', padding: '0.75rem 1rem', marginBottom: '1.5rem',
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          }}>
+            <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)', direction: 'ltr' }}>{scannedPhone}</span>
+            <span style={{ fontSize: '0.88rem', color: 'var(--gold-300)', fontWeight: 700 }}>
+              {scannedCustomer.points} نقطة
+            </span>
+          </div>
 
-      {/* نتيجة المسح */}
+          <form onSubmit={handleAmountConfirm} style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+            <label style={{ fontSize: '0.88rem', color: 'var(--text-muted)' }}>قيمة المشتريات (دينار أردني):</label>
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <input
+                className="cc-input"
+                type="number"
+                inputMode="decimal"
+                min="1"
+                step="0.5"
+                placeholder="مثال: 5"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                autoFocus
+                style={{ flex: 1, marginBottom: 0 }}
+              />
+              {amount && parseFloat(amount) > 0 && (
+                <span style={{
+                  flexShrink: 0, padding: '0 0.75rem',
+                  fontSize: '0.82rem', color: 'var(--gold-300)',
+                  fontWeight: 700, whiteSpace: 'nowrap',
+                }}>
+                  = {calcPoints(amount)} نقطة
+                </span>
+              )}
+            </div>
+            <button
+              className="cc-btn-gold"
+              type="submit"
+              disabled={calcPoints(amount) <= 0}
+            >
+              تأكيد الإضافة ✓
+            </button>
+            <button
+              className="cc-btn-ghost"
+              type="button"
+              onClick={() => setState('idle')}
+              style={{ marginTop: '0.25rem' }}
+            >
+              إلغاء
+            </button>
+          </form>
+        </div>
+      )}
+
+      {/* ── نتيجة الإضافة ────────────────────────────────── */}
       {state === 'result' && (
-        <div className={`cc-card anim-in`} style={{ width: '100%', maxWidth: '440px', marginTop: '0.85rem', padding: '1.75rem', textAlign: 'center' }}>
+        <div className="cc-card anim-in" style={{ width: '100%', maxWidth: '440px', marginTop: '1.25rem', padding: '1.75rem', textAlign: 'center' }}>
           {processing ? (
             <div style={{ padding: '0.75rem 0' }}>
               <span className="spinner" style={{ width: 32, height: 32, borderWidth: 3 }} />
@@ -218,7 +363,7 @@ export default function AdminPage() {
                 {result.message}
               </p>
 
-              {result.success && result.customer.points >= 10 && (
+              {result.success && result.customer.points >= REDEEM_GOAL && (
                 <div style={{
                   marginTop: '0.75rem', padding: '0.65rem 1rem',
                   background: 'rgba(201,164,60,0.1)',
@@ -226,7 +371,7 @@ export default function AdminPage() {
                   borderRadius: '0.75rem',
                   color: 'var(--gold-300)', fontSize: '0.88rem',
                 }}>
-                  🎁 وصل العميل لـ 10 نقاط — يمكنه الاستبدال
+                  🎁 وصل العميل لـ {REDEEM_GOAL} نقاط — يمكنه الاستبدال
                 </div>
               )}
 
@@ -235,7 +380,7 @@ export default function AdminPage() {
               </p>
 
               <button className="cc-btn-gold" onClick={() => setState('idle')}>
-                📷 مسح عميل آخر
+                عميل آخر ←
               </button>
             </>
           ) : null}
