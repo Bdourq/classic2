@@ -224,9 +224,6 @@ export default function CustomerPage() {
           إذا لم يكن لديك حساب، سيُنشأ تلقائياً
         </p>
       </div>
-      <a href="/admin" style={{ marginTop: '2rem', color: 'var(--text-dim)', fontSize: '0.8rem', textDecoration: 'none' }}>
-        🔒 لوحة الكاشير
-      </a>
     </div>
   );
 
@@ -397,7 +394,6 @@ export default function CustomerPage() {
 
       <div style={{ display: 'flex', gap: '1.25rem', marginTop: '1.5rem' }}>
         <button className="cc-btn-ghost" onClick={changeNumber}>🔄 تغيير رقم الهاتف</button>
-        <a href="/admin" className="cc-btn-ghost" style={{ textDecoration: 'none' }}>🔒 لوحة الكاشير</a>
       </div>
     </div>
   );
