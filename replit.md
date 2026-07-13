@@ -46,7 +46,7 @@ npm run dev
 - **Supabase** — قاعدة بيانات + Realtime
 - **html5-qrcode** — مسح QR من كاميرا الجوال
 
-## النشر على Cloudflare Pages (يدوياً عبر ربط GitHub)
+## النشر على Cloudflare Pages ✅
 
 المشروع مرفوع على GitHub: `https://github.com/Bdourq/classic2` (فرع `main`).
 بيانات Supabase و PIN الحقيقية محفوظة الآن كأسرار (Secrets) في هذا الـ Repl — إذا
