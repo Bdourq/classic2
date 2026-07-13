@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Coffee,
@@ -12,76 +12,53 @@ import {
   ArrowRight,
   Lock,
   FileText,
-  Check,
   Trophy,
   QrCode,
   Wifi,
   History,
   Copy,
   LogOut,
-  ChevronRight,
-  ShieldAlert
+  Loader2,
+  AlertTriangle
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 // Import Types and Components
-import { Customer, LoyaltyTransaction } from './types';
+import { Customer } from './types';
 import CoffeeCup from './components/CoffeeCup';
 import FallingBeans from './components/FallingBeans';
 import CashierPanel from './components/CashierPanel';
 import LaunchPostModal from './components/LaunchPostModal';
 import QRScannerSimulator from './components/QRScannerSimulator';
+import {
+  fetchCustomers,
+  createCustomer,
+  addLoyaltyPoints,
+  subscribeToLoyaltyChanges
+} from './lib/db';
+import { isSupabaseConfigured } from './lib/supabase';
 
 // Brand Logo
 import logoImg from './assets/images/classic_cafe_logo_1783940167982.jpg';
 
-// Default mock customers for immediate testing
-const DEFAULT_CUSTOMERS: Customer[] = [
-  {
-    phone: '0791234567',
-    name: 'قصي البدور',
-    points: 7,
-    createdAt: new Date(2026, 6, 1).toISOString(),
-    history: [
-      { id: '1', amount: 3, timestamp: new Date(2026, 6, 2).toISOString(), type: 'add', notes: 'شراء 3 أكواب كولد برو كلاسيك' },
-      { id: '2', amount: 4, timestamp: new Date(2026, 6, 8).toISOString(), type: 'add', notes: 'شراء 4 أكواب لاتيه محمص' }
-    ]
-  },
-  {
-    phone: '0789876543',
-    name: 'سارة الطراونة',
-    points: 9,
-    createdAt: new Date(2026, 6, 5).toISOString(),
-    history: [
-      { id: '3', amount: 5, timestamp: new Date(2026, 6, 6).toISOString(), type: 'add', notes: 'شراء 5 أكواب فلات وايت' },
-      { id: '4', amount: 4, timestamp: new Date(2026, 6, 10).toISOString(), type: 'add', notes: 'شراء 4 أكواب كابتشينو' }
-    ]
-  },
-  {
-    phone: '0771112223',
-    name: 'يزن القضاة',
-    points: 2,
-    createdAt: new Date(2026, 6, 11).toISOString(),
-    history: [
-      { id: '5', amount: 2, timestamp: new Date(2026, 6, 12).toISOString(), type: 'add', notes: 'شراء كوبين أمريكانو بارد' }
-    ]
-  }
-];
-
 export default function App() {
-  // Persistence state
-  const [customers, setCustomers] = useState<Customer[]>(() => {
-    const saved = localStorage.getItem('classic_cafe_customers_v2');
-    return saved ? JSON.parse(saved) : DEFAULT_CUSTOMERS;
-  });
+  // Data state — يأتي الآن من Supabase (قاعدة بيانات حقيقية) بدل التخزين المحلي
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string>('');
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const [activePhone, setActivePhone] = useState<string>(() => {
+    // نحتفظ فقط برقم جوال آخر جلسة نشطة محلياً (تسجيل دخول سريع على نفس الجهاز)،
+    // أما بيانات النقاط نفسها فتُقرأ دوماً من قاعدة البيانات المركزية.
     return localStorage.getItem('classic_cafe_active_phone_v2') || '';
   });
 
   const [loginPhone, setLoginPhone] = useState('');
   const [loginName, setLoginName] = useState('');
   const [showSignup, setShowSignup] = useState(false);
+  const [authBusy, setAuthBusy] = useState(false);
+  const [authError, setAuthError] = useState('');
 
   // Modal & Animation States
   const [isCashierOpen, setIsCashierOpen] = useState(false);
@@ -90,10 +67,29 @@ export default function App() {
   const [beansTriggered, setBeansTriggered] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
 
-  // Sync to localstorage
+  const loadCustomers = useCallback(async () => {
+    try {
+      setIsSyncing(true);
+      const data = await fetchCustomers();
+      setCustomers(data);
+      setLoadError('');
+    } catch (err) {
+      console.error(err);
+      setLoadError('تعذّر الاتصال بقاعدة البيانات. تحقق من إعدادات Supabase في ملف .env.local');
+    } finally {
+      setIsLoading(false);
+      setIsSyncing(false);
+    }
+  }, []);
+
+  // التحميل الأولي + الاشتراك بالتحديثات اللحظية (Realtime)
   useEffect(() => {
-    localStorage.setItem('classic_cafe_customers_v2', JSON.stringify(customers));
-  }, [customers]);
+    loadCustomers();
+    const unsubscribe = subscribeToLoyaltyChanges(() => {
+      loadCustomers();
+    });
+    return unsubscribe;
+  }, [loadCustomers]);
 
   useEffect(() => {
     localStorage.setItem('classic_cafe_active_phone_v2', activePhone);
@@ -114,11 +110,10 @@ export default function App() {
   const activeCustomer = customers.find((c) => c.phone === activePhone);
 
   // Handle Login / Registration
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!loginPhone.trim()) return;
 
-    // Clean phone input
     const cleanPhone = loginPhone.replace(/\s+/g, '');
     const found = customers.find((c) => c.phone === cleanPhone);
 
@@ -131,63 +126,57 @@ export default function App() {
     }
   };
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!loginPhone.trim() || !loginName.trim()) return;
 
     const cleanPhone = loginPhone.replace(/\s+/g, '');
-    const newCustomer: Customer = {
-      phone: cleanPhone,
-      name: loginName.trim(),
-      points: 0,
-      createdAt: new Date().toISOString(),
-      history: []
-    };
-
-    setCustomers((prev) => [...prev, newCustomer]);
-    setActivePhone(cleanPhone);
-    setLoginName('');
-    setLoginPhone('');
-    setShowSignup(false);
+    setAuthBusy(true);
+    setAuthError('');
+    try {
+      const newCustomer = await createCustomer(cleanPhone, loginName.trim());
+      setCustomers((prev) => [newCustomer, ...prev]);
+      setActivePhone(cleanPhone);
+      setLoginName('');
+      setLoginPhone('');
+      setShowSignup(false);
+    } catch (err) {
+      console.error(err);
+      setAuthError('تعذّر إنشاء الحساب. حاول مجدداً.');
+    } finally {
+      setAuthBusy(false);
+    }
   };
 
   // Add Points Trigger (from scanner or cashier)
-  const handleAddPoints = (phone: string, amount: number) => {
-    setCustomers((prev) => {
-      return prev.map((cust) => {
-        if (cust.phone === phone) {
-          const updatedPoints = Math.max(0, cust.points + amount);
-          
-          // Trigger Confetti if points reach 10
-          if (updatedPoints >= 10 && cust.points < 10) {
-            triggerConfetti();
-          }
+  const handleAddPoints = async (phone: string, amount: number) => {
+    const cust = customers.find((c) => c.phone === phone);
+    const currentPoints = cust?.points ?? 0;
+    const updatedPoints = Math.max(0, currentPoints + amount);
+    const absAmt = Math.abs(amount);
+    const suffix = absAmt === 1 ? 'كوب واحد' : absAmt === 2 ? 'كوبين' : 'أكواب';
+    const notes =
+      amount > 0
+        ? `إضافة ${absAmt} ${suffix} (مسح QR)`
+        : `استرداد مكافأة مجانية (-${absAmt} نقاط)`;
 
-          const absAmt = Math.abs(amount);
-          const suffix = absAmt === 1 ? 'كوب واحد' : absAmt === 2 ? 'كوبين' : 'أكواب';
-          const newTx: LoyaltyTransaction = {
-            id: Math.random().toString(),
-            amount: absAmt,
-            timestamp: new Date().toISOString(),
-            type: amount > 0 ? 'add' : 'redeem',
-            notes: amount > 0 
-              ? `إضافة ${absAmt} ${suffix} (مسح QR)` 
-              : `استرداد كوب مجاني (-${absAmt} نقاط)`
-          };
+    try {
+      await addLoyaltyPoints(phone, amount, notes);
 
-          return {
-            ...cust,
-            points: updatedPoints,
-            history: [newTx, ...cust.history]
-          };
-        }
-        return cust;
-      });
-    });
+      // Trigger Confetti if points reach 10
+      if (updatedPoints >= 10 && currentPoints < 10) {
+        triggerConfetti();
+      }
+      // If it's the active customer, trigger the falling beans animation!
+      if (phone === activePhone) {
+        setBeansTriggered(true);
+      }
 
-    // If it's the active customer, trigger the falling beans animation!
-    if (phone === activePhone) {
-      setBeansTriggered(true);
+      // التحديث الفعلي للواجهة سيصل تلقائياً عبر الاشتراك اللحظي (Realtime)،
+      // لكن نعيد الجلب فوراً أيضاً لضمان استجابة سريعة على نفس الجهاز.
+      await loadCustomers();
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -282,15 +271,25 @@ export default function App() {
       {/* --- MAIN HERO BODY --- */}
       <main className="max-w-6xl mx-auto px-4 py-8 flex-1 w-full flex flex-col justify-center items-center">
         
-        {/* Dynamic Dual simulation notice */}
+        {/* Connection & sync status + quick access */}
         <div className="w-full max-w-4xl bg-[#111111]/90 border border-[#D4AF37]/30 rounded-2xl p-4 mb-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-center sm:text-right shadow-xl luxury-gold-border">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-[#D4AF37]/10 rounded-xl text-[#d4af37]">
-              <Sparkles className="w-5 h-5 shrink-0" />
+              {isSupabaseConfigured ? (
+                <Sparkles className="w-5 h-5 shrink-0" />
+              ) : (
+                <AlertTriangle className="w-5 h-5 shrink-0 text-amber-400" />
+              )}
             </div>
-            <p className="text-xs text-[#EDE0D4]/90 leading-relaxed font-semibold">
-              <span className="font-bold text-gold-gradient">بيئة تجريبية فاخرة:</span> يمكنك تجربة محاكاة دور <span className="text-[#d4af37] font-bold">الزبون</span> (مسح الأكواب وبناء العداد الذهبي) ودور <span className="text-[#D4AF37] font-bold">الكاشير</span> (إدارة النقاط واستبدالها برمز PIN) معاً!
-            </p>
+            {isSupabaseConfigured ? (
+              <p className="text-xs text-[#EDE0D4]/90 leading-relaxed font-semibold">
+                <span className="font-bold text-gold-gradient">متصل بقاعدة البيانات المركزية:</span> بيانات الزبائن والكاشير متزامنة الآن مباشرة {isSyncing && <span className="text-[#d4af37]">(جاري التحديث...)</span>}
+              </p>
+            ) : (
+              <p className="text-xs text-amber-300 leading-relaxed font-semibold">
+                لم يتم ربط قاعدة بيانات Supabase بعد — راجع ملف .env.example لتفعيل التزامن الحقيقي بين الأجهزة.
+              </p>
+            )}
           </div>
           <div className="flex gap-2 shrink-0">
             <button
@@ -310,6 +309,18 @@ export default function App() {
           </div>
         </div>
 
+        {loadError && (
+          <div className="w-full max-w-4xl bg-rose-950/40 border border-rose-500/30 text-rose-300 rounded-2xl p-4 mb-6 text-xs font-semibold text-center">
+            {loadError}
+          </div>
+        )}
+
+        {isLoading ? (
+          <div className="flex flex-col items-center gap-3 py-20 text-[#D4AF37]">
+            <Loader2 className="w-8 h-8 animate-spin" />
+            <p className="text-xs font-semibold text-stone-400">جاري تحميل بيانات الولاء...</p>
+          </div>
+        ) : (
         <AnimatePresence mode="wait">
           {!activePhone ? (
             /* ================= WELCOME / REGISTER SCREEN ================= */
@@ -386,12 +397,17 @@ export default function App() {
                     />
                   </div>
 
+                  {authError && (
+                    <p className="text-xs text-rose-400 font-semibold text-center">{authError}</p>
+                  )}
+
                   <div className="flex gap-2">
                     <button
                       type="submit"
-                      className="flex-1 bg-gradient-to-r from-[#B89742] via-[#F5E2A8] to-[#B89742] text-[#1A0F0A] py-3 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-md"
+                      disabled={authBusy}
+                      className="flex-1 bg-gradient-to-r from-[#B89742] via-[#F5E2A8] to-[#B89742] text-[#1A0F0A] py-3 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
                     >
-                      تسجيل فوري
+                      {authBusy ? 'جاري التسجيل...' : 'تسجيل فوري'}
                     </button>
                     <button
                       type="button"
@@ -403,26 +419,6 @@ export default function App() {
                   </div>
                 </form>
               )}
-
-              {/* Demo users list for convenience */}
-              <div className="pt-4 border-t border-[#D4AF37]/20 space-y-2">
-                <p className="text-[10px] font-bold text-[#D4AF37]/80">حسابات تجريبية معدّة مسبقاً للدخول الفوري:</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {DEFAULT_CUSTOMERS.map((cust) => (
-                    <button
-                      key={cust.phone}
-                      onClick={() => {
-                        setActivePhone(cust.phone);
-                        setLoginPhone('');
-                        setShowSignup(false);
-                      }}
-                      className="bg-black hover:bg-[#121212] text-[#EDE0D4] border border-[#D4AF37]/20 hover:border-[#D4AF37]/50 rounded-lg px-2.5 py-1.5 text-[10px] font-mono transition-all cursor-pointer"
-                    >
-                      {cust.name} ({cust.phone})
-                    </button>
-                  ))}
-                </div>
-              </div>
             </motion.div>
           ) : (
             /* ================= CUSTOMER LOYALTY DASHBOARD ================= */
@@ -536,6 +532,7 @@ export default function App() {
             </motion.div>
           )}
         </AnimatePresence>
+        )}
       </main>
 
       {/* --- EXTRA INFORMATION AND FEATURES WALKTHROUGH --- */}

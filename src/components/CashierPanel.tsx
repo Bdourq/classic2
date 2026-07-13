@@ -25,7 +25,8 @@ export default function CashierPanel({ customers, onAddPoints, onClose }: Cashie
   const [customAmount, setCustomAmount] = useState<string>('1');
   const [successMsg, setSuccessMsg] = useState<string>('');
 
-  const CORRECT_PIN = '1234';
+  // رمز الكاشير يُقرأ من ملف .env.local (VITE_CASHIER_PIN) — راجع .env.example
+  const CORRECT_PIN = (import.meta.env.VITE_CASHIER_PIN as string | undefined) || '1234';
 
   const handleKeyPress = (num: string) => {
     if (pin.length < 4) {
@@ -111,8 +112,6 @@ export default function CashierPanel({ customers, onAddPoints, onClose }: Cashie
           >
             <p className="text-sm font-semibold text-[#EDE0D4] mb-6 text-center">
               الرجاء إدخال رمز الكاشير PIN للمتابعة
-              <br />
-              <span className="text-xs font-normal text-stone-400">(الرمز الافتراضي للتجربة: <span className="font-mono font-bold text-[#D4AF37]">1234</span>)</span>
             </p>
 
             {/* PIN Dots indicators */}
