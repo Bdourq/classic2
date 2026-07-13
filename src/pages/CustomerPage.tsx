@@ -1,5 +1,5 @@
-import { useEffect, useState, useCallback, FormEvent, CSSProperties } from 'react';
-import { findCustomer, createCustomer, redeemCoffee, addPointsCustomer, getPointsLog, subscribeToCustomer } from '../lib/db';
+import { useEffect, useState, useCallback, CSSProperties } from 'react';
+import { findCustomer, createCustomer, redeemCoffee, getPointsLog, subscribeToCustomer } from '../lib/db';
 import { Customer, PointsLog } from '../types';
 
 const GOAL = 7;
@@ -106,11 +106,6 @@ export default function CustomerPage() {
   const [flashNew, setFlashNew]   = useState(false);
   const [flashPoints, setFlashPoints] = useState(0);
 
-  // إضافة نقاط من جانب العميل
-  const [purchaseAmount, setPurchaseAmount] = useState('');
-  const [addingPoints, setAddingPoints]     = useState(false);
-  const [addMsg, setAddMsg]                 = useState('');
-
   const loadData = useCallback(async (p: string, flash = false) => {
     try {
       let c = await findCustomer(p);
@@ -184,25 +179,6 @@ export default function CustomerPage() {
     } catch (e: any) {
       setRedeemMsg('❌ ' + (e?.message ?? 'خطأ أثناء الاستبدال'));
     } finally { setRedeeming(false); }
-  }
-
-  async function handleAddPoints(e: FormEvent) {
-    e.preventDefault();
-    const pts = Math.floor(parseFloat(purchaseAmount) || 0);
-    if (pts <= 0) return;
-    setAddingPoints(true); setAddMsg('');
-    try {
-      await addPointsCustomer(phone, pts);
-      const label = pts === 1 ? 'نقطة واحدة' : `${pts} نقاط`;
-      setAddMsg(`✅ أُضيفت ${label} — قيمة المشتريات: ${purchaseAmount} دينار`);
-      setPurchaseAmount('');
-      await loadData(phone);
-    } catch (e: any) {
-      setAddMsg('❌ ' + (e?.message ?? 'خطأ أثناء إضافة النقاط'));
-    } finally {
-      setAddingPoints(false);
-      setTimeout(() => setAddMsg(''), 4000);
-    }
   }
 
   const pageStyle: CSSProperties = {
@@ -328,70 +304,6 @@ export default function CustomerPage() {
           >
             {redeeming ? <span className="spinner" style={{ borderTopColor: 'var(--dark-900)' }} /> : '🎁 استبدل الآن'}
           </button>
-        )}
-      </div>
-
-      {/* ── تسجيل مشتريات جديدة ─────────────────────────── */}
-      <div className="cc-card anim-in" style={{ width: '100%', maxWidth: '420px', marginTop: '0.85rem', padding: '1.5rem' }}>
-        <p style={{ margin: '0 0 0.25rem', fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.98rem' }}>
-          ☕ سجّل مشترياتك
-        </p>
-        <p style={{ margin: '0 0 1rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-          أدخل قيمة فاتورتك — كل دينار يساوي نقطة واحدة
-        </p>
-
-        <form onSubmit={handleAddPoints} style={{ display: 'flex', gap: '0.5rem' }}>
-          <div style={{ flex: 1, position: 'relative' }}>
-            <input
-              className="cc-input"
-              type="number"
-              inputMode="decimal"
-              min="1"
-              step="0.5"
-              placeholder="مثال: 5.5"
-              value={purchaseAmount}
-              onChange={(e) => setPurchaseAmount(e.target.value)}
-              style={{ marginBottom: 0, paddingLeft: '3rem' }}
-            />
-            <span style={{
-              position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)',
-              fontSize: '0.78rem', color: 'var(--text-dim)', pointerEvents: 'none',
-            }}>JD</span>
-          </div>
-
-          {purchaseAmount && parseFloat(purchaseAmount) > 0 && (
-            <span style={{
-              display: 'flex', alignItems: 'center', flexShrink: 0,
-              fontSize: '0.82rem', color: 'var(--gold-300)', fontWeight: 700,
-              padding: '0 0.5rem', whiteSpace: 'nowrap',
-            }}>
-              = {Math.floor(parseFloat(purchaseAmount))} نقطة
-            </span>
-          )}
-
-          <button
-            className="cc-btn-gold"
-            type="submit"
-            disabled={addingPoints || Math.floor(parseFloat(purchaseAmount) || 0) <= 0}
-            style={{ flexShrink: 0, padding: '0 1.1rem' }}
-          >
-            {addingPoints
-              ? <span className="spinner" style={{ borderTopColor: 'var(--dark-900)', width: 16, height: 16, borderWidth: 2 }} />
-              : 'إضافة'}
-          </button>
-        </form>
-
-        {addMsg && (
-          <div style={{
-            marginTop: '0.75rem', padding: '0.55rem 0.9rem',
-            background: addMsg.startsWith('❌') ? 'rgba(229,115,115,0.1)' : 'rgba(201,164,60,0.1)',
-            border: `1px solid ${addMsg.startsWith('❌') ? 'rgba(229,115,115,0.35)' : 'rgba(201,164,60,0.35)'}`,
-            borderRadius: '0.65rem',
-            color: addMsg.startsWith('❌') ? '#E57373' : 'var(--gold-300)',
-            fontWeight: 600, fontSize: '0.85rem',
-          }}>
-            {addMsg}
-          </div>
         )}
       </div>
 
