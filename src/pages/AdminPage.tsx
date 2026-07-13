@@ -20,203 +20,182 @@ function extractPhone(text: string): string {
     const id = url.searchParams.get('id');
     if (id) return id;
   } catch {}
-  // إذا كان النص مجرد رقم هاتف
-  const cleaned = text.replace(/\s+/g, '').trim();
-  return cleaned;
+  return text.replace(/\s+/g, '').trim();
 }
 
 export default function AdminPage() {
-  const [state, setState] = useState<State>('pin');
+  const [state, setState]       = useState<State>('pin');
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState('');
-  const [result, setResult] = useState<ScanResult | null>(null);
+  const [result, setResult]     = useState<ScanResult | null>(null);
   const [processing, setProcessing] = useState(false);
 
   function handlePin(e: FormEvent) {
     e.preventDefault();
     if (pinInput === PIN) {
-      setState('idle');
-      setPinError('');
+      setState('idle'); setPinError('');
     } else {
-      setPinError('رمز PIN خاطئ، حاول مجدداً');
-      setPinInput('');
+      setPinError('رمز PIN خاطئ'); setPinInput('');
     }
   }
 
   const handleScan = useCallback(async (text: string) => {
-    setState('result');
-    setProcessing(true);
-    setResult(null);
-
+    setState('result'); setProcessing(true); setResult(null);
     const phone = extractPhone(text);
     try {
       const customer = await findCustomer(phone);
       if (!customer) {
-        setResult({ phone, customer: { phone, points: 0, createdAt: '' }, success: false, message: `العميل برقم ${phone} غير مسجّل` });
-        setProcessing(false);
+        setResult({ phone, customer: { phone, points: 0, createdAt: '' }, success: false, message: `العميل ${phone} غير مسجّل` });
         return;
       }
       await addPoint(phone, PIN);
       const updated = await findCustomer(phone);
-      setResult({
-        phone,
-        customer: updated!,
-        success: true,
-        message: `تمت إضافة نقطة! الرصيد الجديد: ${updated!.points} نقطة ☕`,
-      });
+      setResult({ phone, customer: updated!, success: true, message: `✓ نقطة أُضيفت — الرصيد: ${updated!.points}` });
     } catch (err: any) {
       setResult({ phone, customer: { phone, points: 0, createdAt: '' }, success: false, message: err?.message ?? 'خطأ غير متوقع' });
-    } finally {
-      setProcessing(false);
-    }
+    } finally { setProcessing(false); }
   }, []);
 
-  // ─── شاشة PIN ───
-  if (state === 'pin') {
-    return (
-      <div style={{
-        minHeight: '100dvh',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '1.5rem',
-        background: 'linear-gradient(160deg, var(--brown-950) 0%, var(--brown-900) 100%)',
-      }}>
-        <div className="cafe-card animate-in" style={{ width: '100%', maxWidth: '340px', padding: '2rem' }}>
-          <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-            <div style={{ fontSize: '2.5rem' }}>🔒</div>
-            <h1 style={{ margin: '0.5rem 0 0.25rem', fontSize: '1.3rem', fontWeight: 800, color: 'var(--brown-900)' }}>
-              لوحة الكاشير
-            </h1>
-            <p style={{ margin: 0, color: 'var(--brown-500)', fontSize: '0.9rem' }}>أدخل رمز PIN للدخول</p>
-          </div>
+  /* ── شاشة PIN ───────────────────────── */
+  if (state === 'pin') return (
+    <div style={{
+      minHeight: '100dvh',
+      display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center',
+      padding: '1.5rem',
+      background: 'radial-gradient(ellipse 80% 50% at 50% 10%, rgba(201,164,60,0.10) 0%, transparent 60%), var(--dark-900)',
+    }}>
+      <img src="/logo.jpg" alt="Classic Cafe" className="cc-logo" style={{ marginBottom: '1.5rem' }} />
 
-          <form onSubmit={handlePin}>
-            <input
-              className="cafe-input"
-              type="password"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              placeholder="••••"
-              value={pinInput}
-              maxLength={8}
-              onChange={(e) => setPinInput(e.target.value)}
-              autoFocus
-              style={{ fontSize: '1.5rem', letterSpacing: '6px', marginBottom: pinError ? '0.5rem' : '1.25rem' }}
-            />
-            {pinError && <p style={{ color: '#dc2626', textAlign: 'center', fontSize: '0.88rem', margin: '0 0 1rem' }}>{pinError}</p>}
-            <button className="cafe-btn-primary" type="submit">دخول →</button>
-          </form>
+      <div className="cc-card anim-in" style={{ width: '100%', maxWidth: '320px', padding: '2rem' }}>
+        <p style={{ margin: '0 0 0.25rem', fontSize: '1.15rem', fontWeight: 800, textAlign: 'center', color: 'var(--text-primary)' }}>
+          لوحة الكاشير
+        </p>
+        <p style={{ margin: '0 0 1.75rem', fontSize: '0.88rem', color: 'var(--text-muted)', textAlign: 'center' }}>
+          أدخل رمز PIN للدخول
+        </p>
 
-          <a href="/" style={{ display: 'block', textAlign: 'center', marginTop: '1rem', color: 'var(--brown-400)', fontSize: '0.85rem', textDecoration: 'none' }}>
-            ← صفحة الزبائن
-          </a>
-        </div>
+        <form onSubmit={handlePin}>
+          <input
+            className="cc-input"
+            type="password"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            placeholder="••••"
+            value={pinInput}
+            maxLength={8}
+            onChange={(e) => setPinInput(e.target.value)}
+            autoFocus
+            style={{ fontSize: '1.6rem', letterSpacing: '8px', marginBottom: pinError ? '0.5rem' : '1.25rem' }}
+          />
+          {pinError && (
+            <p style={{ color: '#E57373', textAlign: 'center', fontSize: '0.85rem', margin: '0 0 1rem' }}>{pinError}</p>
+          )}
+          <button className="cc-btn-gold" type="submit">دخول ←</button>
+        </form>
+
+        <a href="/" style={{ display: 'block', textAlign: 'center', marginTop: '1.25rem', color: 'var(--text-dim)', fontSize: '0.82rem', textDecoration: 'none' }}>
+          ← صفحة العملاء
+        </a>
       </div>
-    );
-  }
+    </div>
+  );
 
-  // ─── شاشة الكاشير الرئيسية ───
+  /* ── شاشة الكاشير الرئيسية ─────────── */
   return (
     <div style={{
       minHeight: '100dvh',
-      background: 'linear-gradient(180deg, var(--brown-900) 0%, var(--brown-800) 25%, var(--brown-50) 25%)',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      padding: '0 1rem 2rem',
+      background: 'radial-gradient(ellipse 80% 50% at 50% 0%, rgba(201,164,60,0.08) 0%, transparent 60%), var(--dark-900)',
+      display: 'flex', flexDirection: 'column', alignItems: 'center',
+      padding: '0 1rem 2.5rem',
     }}>
-      {/* الهيدر */}
+
+      {/* هيدر */}
       <div style={{
-        width: '100%', maxWidth: '420px',
-        paddingTop: '1.25rem',
+        width: '100%', maxWidth: '440px',
+        padding: '1.25rem 0 0',
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
       }}>
         <button
+          className="cc-btn-ghost"
           onClick={() => { setState('pin'); setPinInput(''); }}
-          style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', fontSize: '0.85rem' }}
         >
-          ← خروج
+          🔒 قفل
         </button>
-        <span style={{ color: 'white', fontWeight: 800, fontSize: '1rem' }}>☕ Classic Cafe — كاشير</span>
-        <div style={{ width: 40 }} />
+        <img src="/logo.jpg" alt="Classic Cafe" className="cc-logo-sm" />
+        <div style={{ width: 48 }} />
       </div>
 
-      {/* البطاقة الرئيسية */}
-      <div className="cafe-card animate-in" style={{ width: '100%', maxWidth: '420px', marginTop: '1.5rem', padding: '1.75rem', textAlign: 'center' }}>
-        <p style={{ margin: '0 0 0.25rem', color: 'var(--brown-500)', fontSize: '0.9rem' }}>لكل كوب قهوة</p>
-        <h2 style={{ margin: '0 0 1.5rem', fontSize: '1.35rem', fontWeight: 800, color: 'var(--brown-900)' }}>
-          امسح QR العميل لإضافة نقطة
-        </h2>
+      {/* بطاقة المسح */}
+      <div className="cc-card anim-in" style={{ width: '100%', maxWidth: '440px', marginTop: '1.25rem', padding: '2rem', textAlign: 'center' }}>
+        <p style={{ margin: '0 0 0.2rem', fontSize: '0.85rem', color: 'var(--text-muted)', letterSpacing: '1.5px' }}>
+          CLASSIC CAFE — CASHIER
+        </p>
+
+        <div className="cc-divider" style={{ margin: '0.85rem auto 1.5rem' }} />
+
+        <p style={{ margin: '0 0 1.75rem', fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+          امسح رمز QR العميل
+          <br />
+          <span style={{ fontSize: '0.85rem', fontWeight: 400, color: 'var(--text-muted)' }}>
+            تُضاف نقطة واحدة تلقائياً
+          </span>
+        </p>
 
         <button
-          className="cafe-btn-primary"
-          style={{ fontSize: '1.15rem', padding: '1.1rem' }}
+          className="cc-btn-gold"
+          style={{ fontSize: '1.15rem', padding: '1.1rem', maxWidth: 280, margin: '0 auto' }}
           onClick={() => { setState('scanning'); setResult(null); }}
         >
           📷 مسح QR
         </button>
-
-        <p style={{ marginTop: '1rem', fontSize: '0.82rem', color: 'var(--brown-400)' }}>
-          سيُضاف 1 نقطة تلقائياً لكل عملية مسح
-        </p>
       </div>
 
       {/* نتيجة المسح */}
       {state === 'result' && (
-        <div className="cafe-card animate-in" style={{
-          width: '100%', maxWidth: '420px', marginTop: '1rem', padding: '1.5rem', textAlign: 'center',
-        }}>
+        <div className={`cc-card anim-in`} style={{ width: '100%', maxWidth: '440px', marginTop: '0.85rem', padding: '1.75rem', textAlign: 'center' }}>
           {processing ? (
-            <div>
-              <span className="spin" style={{ width: 32, height: 32, border: '3px solid var(--brown-200)', borderTopColor: 'var(--brown-700)', borderRadius: '50%', display: 'inline-block' }} />
-              <p style={{ marginTop: '0.75rem', color: 'var(--brown-600)' }}>جارٍ المعالجة...</p>
+            <div style={{ padding: '0.75rem 0' }}>
+              <span className="spinner" style={{ width: 32, height: 32, borderWidth: 3 }} />
+              <p style={{ marginTop: '0.75rem', color: 'var(--text-muted)' }}>جارٍ المعالجة...</p>
             </div>
           ) : result ? (
-            <div>
-              <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>
-                {result.success ? '✅' : '❌'}
-              </div>
+            <>
               <p style={{
-                fontWeight: 700,
-                fontSize: '1rem',
-                color: result.success ? '#15803d' : '#dc2626',
+                fontWeight: 800, fontSize: '1.1rem',
+                color: result.success ? 'var(--gold-300)' : '#E57373',
                 margin: '0 0 0.5rem',
               }}>
                 {result.message}
               </p>
-              {result.success && (
-                <p style={{ margin: '0 0 1rem', fontSize: '0.9rem', color: 'var(--brown-600)', direction: 'ltr' }}>
-                  {result.phone}
-                </p>
-              )}
+
               {result.success && result.customer.points >= 10 && (
                 <div style={{
-                  background: '#fef9c3', borderRadius: '0.75rem', padding: '0.6rem 1rem',
-                  marginBottom: '0.75rem', fontSize: '0.9rem', color: '#854d0e',
+                  marginTop: '0.75rem', padding: '0.65rem 1rem',
+                  background: 'rgba(201,164,60,0.1)',
+                  border: '1px solid rgba(201,164,60,0.35)',
+                  borderRadius: '0.75rem',
+                  color: 'var(--gold-300)', fontSize: '0.88rem',
                 }}>
-                  🎁 العميل وصل لـ 10 نقاط! يمكنه الاستبدال.
+                  🎁 وصل العميل لـ 10 نقاط — يمكنه الاستبدال
                 </div>
               )}
-              <button
-                className="cafe-btn-primary"
-                onClick={() => setState('idle')}
-                style={{ marginTop: '0.25rem' }}
-              >
+
+              <p style={{ margin: '0.75rem 0 1.25rem', fontSize: '0.82rem', color: 'var(--text-dim)', direction: 'ltr' }}>
+                {result.phone}
+              </p>
+
+              <button className="cc-btn-gold" onClick={() => setState('idle')}>
                 📷 مسح عميل آخر
               </button>
-            </div>
+            </>
           ) : null}
         </div>
       )}
 
-      {/* Scanner */}
+      {/* Scanner modal */}
       {state === 'scanning' && (
-        <QRScanner
-          onScan={handleScan}
-          onClose={() => setState('idle')}
-        />
+        <QRScanner onScan={handleScan} onClose={() => setState('idle')} />
       )}
     </div>
   );

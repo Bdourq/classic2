@@ -7,15 +7,13 @@ interface Props {
 }
 
 export default function QRScanner({ onScan, onClose }: Props) {
-  // Keep latest callback in a ref so the effect closure doesn't go stale
   const onScanRef = useRef(onScan);
   onScanRef.current = onScan;
 
   useEffect(() => {
-    // StrictMode-safe: no mountedRef guard — each effect invocation owns its
-    // own Html5Qrcode instance, and cleanup always stops the camera.
+    // StrictMode-safe: no guard — each effect invocation owns its instance.
     let qrCode: Html5Qrcode | null = null;
-    let done = false; // prevent double-fire after unmount
+    let done = false;
 
     async function start() {
       try {
@@ -28,7 +26,7 @@ export default function QRScanner({ onScan, onClose }: Props) {
             done = true;
             qrCode?.stop().catch(() => {}).finally(() => onScanRef.current(text));
           },
-          () => {} // frame-level decode errors — ignore
+          () => {}
         );
       } catch (err) {
         console.warn('[QRScanner] Camera init error:', err);
@@ -36,39 +34,36 @@ export default function QRScanner({ onScan, onClose }: Props) {
     }
 
     start();
-
-    return () => {
-      done = true;
-      qrCode?.stop().catch(() => {});
-    };
-  }, []); // intentionally empty — one scanner per mount lifecycle
+    return () => { done = true; qrCode?.stop().catch(() => {}); };
+  }, []);
 
   return (
-    <div
-      style={{
-        position: 'fixed', inset: 0, zIndex: 50,
-        background: 'rgba(26, 10, 3, 0.88)',
-        display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center',
-        padding: '1rem',
-      }}
-    >
-      <div className="cafe-card" style={{ width: '100%', maxWidth: '400px', padding: '1.5rem' }}>
-        <p style={{
-          textAlign: 'center', fontWeight: 700,
-          fontSize: '1.1rem', color: 'var(--brown-800)', marginBottom: '1rem',
-        }}>
-          📷 وجّه الكاميرا نحو رمز QR للعميل
-        </p>
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 50,
+      background: 'rgba(5,5,5,0.92)',
+      display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center',
+      padding: '1rem',
+      backdropFilter: 'blur(6px)',
+    }}>
+      <div className="cc-card" style={{ width: '100%', maxWidth: '400px', padding: '1.5rem' }}>
 
-        {/* html5-qrcode mounts into this div */}
+        {/* عنوان */}
+        <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
+          <p style={{ margin: 0, fontWeight: 700, color: 'var(--text-primary)', fontSize: '1.05rem' }}>
+            📷 وجّه الكاميرا نحو رمز QR
+          </p>
+          <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+            سيُضاف +1 نقطة تلقائياً
+          </p>
+        </div>
+
+        <div className="cc-divider" style={{ marginBottom: '1rem' }} />
+
+        {/* حاوية html5-qrcode */}
         <div id="qr-reader" style={{ width: '100%', direction: 'ltr' }} />
 
-        <button
-          className="cafe-btn-outline"
-          style={{ marginTop: '1rem' }}
-          onClick={onClose}
-        >
+        <button className="cc-btn-outline" style={{ marginTop: '1rem' }} onClick={onClose}>
           إلغاء
         </button>
       </div>
