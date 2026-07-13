@@ -1,115 +1,169 @@
-import { useEffect, useState, useCallback } from 'react';
-import { findCustomer, redeemCoffee, getPointsLog, subscribeToCustomer } from '../lib/db';
+import { useEffect, useState, useCallback, FormEvent, CSSProperties } from 'react';
+import { findCustomer, createCustomer, redeemCoffee, getPointsLog, subscribeToCustomer } from '../lib/db';
 import { Customer, PointsLog } from '../types';
-import Header from '../components/Header';
 
 const GOAL = 10;
+const STORAGE_KEY = 'cc_phone';
 
-/* رمز كوب القهوة SVG — نسخة ذهبية */
-function CupIcon({ filled }: { filled: boolean }) {
+/* ─── دائرة التقدّم — النقاط الحالية من 10 ─────────────── */
+function ProgressCircle({ points }: { points: number }) {
+  const size = 190;
+  const stroke = 14;
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const pct = Math.min(points, GOAL) / GOAL;
+  const offset = c * (1 - pct);
+
   return (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
-      <path
-        d="M17 8H18C19.1046 8 20 8.89543 20 10V11C20 12.1046 19.1046 13 18 13H17"
-        stroke={filled ? '#C9A43C' : 'rgba(201,164,60,0.2)'}
-        strokeWidth="1.8" strokeLinecap="round"
-      />
-      <path
-        d="M4 8H17V15C17 16.6569 15.6569 18 14 18H7C5.34315 18 4 16.6569 4 15V8Z"
-        fill={filled ? 'rgba(201,164,60,0.18)' : 'transparent'}
-        stroke={filled ? '#C9A43C' : 'rgba(201,164,60,0.2)'}
-        strokeWidth="1.8"
-      />
-      <path d="M2 21H19" stroke={filled ? '#C9A43C' : 'rgba(201,164,60,0.2)'} strokeWidth="1.8" strokeLinecap="round" />
-      <path
-        d="M8 5C8 5 8.5 4 9.5 4C10.5 4 11 5 12 5C13 5 13.5 4 14.5 4"
-        stroke={filled ? '#C9A43C' : 'rgba(201,164,60,0.15)'}
-        strokeWidth="1.4" strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-function buildQrUrl(phone: string) {
-  return `${window.location.origin}/c?id=${encodeURIComponent(phone)}`;
-}
-
-function QrImage({ phone }: { phone: string }) {
-  const url = buildQrUrl(phone);
-  const src = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(url)}&size=220x220&margin=12&color=C9A43C&bgcolor=111111`;
-  return (
-    <div style={{ textAlign: 'center' }}>
+    <div style={{ position: 'relative', width: size, height: size, margin: '0 auto' }}>
+      <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(201,164,60,0.14)" strokeWidth={stroke} />
+        <circle
+          cx={size / 2} cy={size / 2} r={r} fill="none"
+          stroke="url(#ccGoldRing)" strokeWidth={stroke}
+          strokeDasharray={c} strokeDashoffset={offset} strokeLinecap="round"
+          style={{ transition: 'stroke-dashoffset 0.7s ease' }}
+        />
+        <defs>
+          <linearGradient id="ccGoldRing" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#C9A43C" />
+            <stop offset="50%" stopColor="#F5D980" />
+            <stop offset="100%" stopColor="#C9A43C" />
+          </linearGradient>
+        </defs>
+      </svg>
       <div style={{
-        display: 'inline-block',
-        padding: '12px',
-        background: '#111',
-        borderRadius: '1rem',
-        border: '2px solid rgba(201,164,60,0.4)',
-        boxShadow: '0 0 30px rgba(201,164,60,0.12)',
+        position: 'absolute', inset: 0,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       }}>
-        <img src={src} alt="QR" style={{ width: 160, height: 160, display: 'block', borderRadius: '0.5rem' }} />
+        <span style={{
+          fontSize: '3rem', fontWeight: 900, lineHeight: 1,
+          background: 'var(--gold-gradient)',
+          WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
+        }}>
+          {Math.min(points, GOAL)}
+        </span>
+        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.1rem' }}>من {GOAL} ☕</span>
       </div>
-      <p style={{ marginTop: '0.75rem', fontSize: '0.78rem', color: 'var(--text-dim)', direction: 'ltr' }}>{phone}</p>
     </div>
   );
 }
 
-function ProgressRow({ points }: { points: number }) {
-  const filled = Math.min(points, GOAL);
+/* ─── تنسيق وقت النشاط: اليوم / أمس / تاريخ ───────────── */
+function formatActivityTime(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  const time = d.toLocaleTimeString('ar-JO', { hour: '2-digit', minute: '2-digit' });
+
+  const sameDay = (a: Date, b: Date) =>
+    a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+
+  if (sameDay(d, now)) return `اليوم ${time}`;
+
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (sameDay(d, yesterday)) return `أمس ${time}`;
+
+  return `${d.toLocaleDateString('ar-JO', { day: 'numeric', month: 'short' })} ${time}`;
+}
+
+/* ─── الهيدر الثابت أعلى الصفحة: لوجو + عنوان "نقاطي" ──── */
+function Hero() {
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'center', gap: '0.3rem', flexWrap: 'wrap' }}>
-        {Array.from({ length: GOAL }).map((_, i) => (
-          <span key={i}><CupIcon filled={i < filled} /></span>
-        ))}
-      </div>
-      <p style={{ textAlign: 'center', marginTop: '0.6rem', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-        {filled} / {GOAL}
-        {points >= GOAL && (
-          <span style={{ color: 'var(--gold-300)', fontWeight: 700 }}> — مبروك! استحققت قهوتك ☕</span>
-        )}
+    <div className="anim-in" style={{ textAlign: 'center', margin: '2rem 0 1.5rem' }}>
+      <img src="/logo.jpg" alt="Classic Cafe" className="cc-logo" style={{ marginBottom: '1rem' }} />
+      <h1 style={{
+        margin: '0 0 0.15rem',
+        fontFamily: "'Cinzel', serif",
+        fontSize: '1.6rem', fontWeight: 700, letterSpacing: '2px',
+        color: 'var(--text-primary)',
+      }}>
+        نقاطي
+      </h1>
+      <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)', letterSpacing: '1px' }}>
+        CLASSIC CAFE — نظام الولاء
       </p>
     </div>
   );
 }
 
+type Stage = 'need-phone' | 'loading' | 'ready' | 'error';
+
 export default function CustomerPage() {
-  const phone = new URLSearchParams(window.location.search).get('id') ?? '';
+  const idFromUrl = new URLSearchParams(window.location.search).get('id');
+
+  const [stage, setStage]         = useState<Stage>('loading');
+  const [phone, setPhone]         = useState<string>('');
+  const [phoneInput, setPhoneInput] = useState('');
+  const [phoneErr, setPhoneErr]   = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   const [customer, setCustomer]   = useState<Customer | null>(null);
   const [log, setLog]             = useState<PointsLog[]>([]);
-  const [showHistory, setHistory] = useState(false);
-  const [showQr, setShowQr]       = useState(false);
-  const [loading, setLoading]     = useState(true);
   const [redeeming, setRedeeming] = useState(false);
   const [redeemMsg, setRedeemMsg] = useState('');
-  const [error, setError]         = useState('');
+  const [errorMsg, setErrorMsg]   = useState('');
   const [flashNew, setFlashNew]   = useState(false);
 
-  const loadData = useCallback(async (flash = false) => {
-    if (!phone) { setError('رابط غير صحيح'); setLoading(false); return; }
+  const loadData = useCallback(async (p: string, flash = false) => {
     try {
-      const c = await findCustomer(phone);
-      if (!c) { window.location.href = '/'; return; }
+      let c = await findCustomer(p);
+      if (!c) c = await createCustomer(p);
       setCustomer(prev => {
-        if (flash && prev && c.points > prev.points) setFlashNew(true);
+        if (flash && prev && c!.points > prev.points) setFlashNew(true);
         return c;
       });
-      const l = await getPointsLog(phone);
-      setLog(l);
-    } catch (e: any) { setError(e?.message ?? 'خطأ في التحميل'); }
-    finally { setLoading(false); }
-  }, [phone]);
+      const l = await getPointsLog(p);
+      setLog(l.slice(0, 5));
+      setStage('ready');
+    } catch (e: any) {
+      setErrorMsg(e?.message ?? 'حدث خطأ أثناء تحميل البيانات');
+      setStage('error');
+    }
+  }, []);
 
+  /* تحديد رقم الهاتف: من رابط QR، أو من التخزين المحلي، أو نطلبه */
   useEffect(() => {
-    loadData();
-    const unsub = subscribeToCustomer(phone, () => loadData(true));
+    const stored = idFromUrl || localStorage.getItem(STORAGE_KEY) || '';
+    if (stored) {
+      setPhone(stored);
+      setStage('loading');
+      loadData(stored);
+    } else {
+      setStage('need-phone');
+    }
+  }, [idFromUrl, loadData]);
+
+  /* تحديث لحظي عند إضافة نقطة أو الاستبدال */
+  useEffect(() => {
+    if (!phone) return;
+    const unsub = subscribeToCustomer(phone, () => loadData(phone, true));
     return unsub;
-  }, [loadData, phone]);
+  }, [phone, loadData]);
 
   useEffect(() => {
     if (flashNew) { const t = setTimeout(() => setFlashNew(false), 2800); return () => clearTimeout(t); }
   }, [flashNew]);
+
+  function handlePhoneSubmit(e: FormEvent) {
+    e.preventDefault();
+    const cleaned = phoneInput.replace(/\s+/g, '').trim();
+    if (!cleaned)           { setPhoneErr('أدخل رقم هاتفك'); return; }
+    if (cleaned.length < 7) { setPhoneErr('رقم قصير جداً');   return; }
+
+    setPhoneErr('');
+    setSubmitting(true);
+    localStorage.setItem(STORAGE_KEY, cleaned);
+    setPhone(cleaned);
+    setStage('loading');
+    loadData(cleaned).finally(() => setSubmitting(false));
+  }
+
+  function changeNumber() {
+    localStorage.removeItem(STORAGE_KEY);
+    setCustomer(null); setLog([]); setPhone(''); setPhoneInput('');
+    setStage('need-phone');
+  }
 
   async function handleRedeem() {
     if (!customer || customer.points < GOAL) return;
@@ -117,71 +171,108 @@ export default function CustomerPage() {
     try {
       await redeemCoffee(phone);
       setRedeemMsg('✅ تم استبدال 10 نقاط — استمتع بقهوتك!');
-      await loadData();
+      await loadData(phone);
     } catch (e: any) {
       setRedeemMsg('❌ ' + (e?.message ?? 'خطأ أثناء الاستبدال'));
     } finally { setRedeeming(false); }
   }
 
-  if (loading) return (
+  const pageStyle: CSSProperties = {
+    minHeight: '100dvh',
+    background: 'radial-gradient(ellipse 80% 50% at 50% 0%, rgba(201,164,60,0.09) 0%, transparent 60%), var(--dark-900)',
+    display: 'flex', flexDirection: 'column', alignItems: 'center',
+    padding: '0 1.25rem 2.5rem',
+  };
+
+  /* ── طلب رقم الهاتف (أول زيارة) ─────────────────────── */
+  if (stage === 'need-phone') return (
+    <div style={pageStyle}>
+      <Hero />
+      <div className="cc-card anim-in" style={{ width: '100%', maxWidth: '380px', padding: '2rem' }}>
+        <p style={{ margin: '0 0 0.35rem', fontSize: '1.15rem', fontWeight: 800, textAlign: 'center', color: 'var(--text-primary)' }}>
+          أهلاً بك
+        </p>
+        <p style={{ margin: '0 0 1.5rem', fontSize: '0.88rem', color: 'var(--text-muted)', textAlign: 'center' }}>
+          أدخل رقم هاتفك لعرض نقاطك — سيتم تذكّرك في زيارتك القادمة
+        </p>
+        <form onSubmit={handlePhoneSubmit}>
+          <input
+            className="cc-input"
+            type="tel"
+            inputMode="tel"
+            placeholder="07XXXXXXXX"
+            value={phoneInput}
+            onChange={(e) => setPhoneInput(e.target.value)}
+            autoFocus
+            dir="ltr"
+            style={{ marginBottom: phoneErr ? '0.5rem' : '1.25rem' }}
+          />
+          {phoneErr && (
+            <p style={{ color: '#E57373', textAlign: 'center', fontSize: '0.85rem', margin: '0 0 1rem' }}>{phoneErr}</p>
+          )}
+          <button className="cc-btn-gold" type="submit" disabled={submitting}>
+            {submitting ? <span className="spinner" style={{ borderTopColor: 'var(--dark-900)' }} /> : 'عرض نقاطي ←'}
+          </button>
+        </form>
+        <p style={{ marginTop: '1.1rem', textAlign: 'center', fontSize: '0.78rem', color: 'var(--text-dim)' }}>
+          إذا لم يكن لديك حساب، سيُنشأ تلقائياً
+        </p>
+      </div>
+      <a href="/admin" style={{ marginTop: '2rem', color: 'var(--text-dim)', fontSize: '0.8rem', textDecoration: 'none' }}>
+        🔒 لوحة الكاشير
+      </a>
+    </div>
+  );
+
+  /* ── تحميل ────────────────────────────────────────────── */
+  if (stage === 'loading') return (
     <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--dark-900)' }}>
       <span className="spinner" style={{ width: 36, height: 36, borderWidth: 3 }} />
     </div>
   );
 
-  if (error || !customer) return (
+  /* ── خطأ ──────────────────────────────────────────────── */
+  if (stage === 'error' || !customer) return (
     <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '2rem', textAlign: 'center', background: 'var(--dark-900)' }}>
-      <p style={{ color: 'var(--gold-400)' }}>{error || 'لم يتم العثور على الحساب'}</p>
-      <a href="/" style={{ marginTop: '1rem', color: 'var(--gold-300)', fontWeight: 700 }}>← العودة</a>
+      <p style={{ color: 'var(--gold-400)', marginBottom: '1rem' }}>{errorMsg || 'حدث خطأ غير متوقع'}</p>
+      <button className="cc-btn-outline" style={{ maxWidth: 220 }} onClick={changeNumber}>🔄 محاولة رقم آخر</button>
     </div>
   );
 
   const canRedeem = customer.points >= GOAL;
+  const remaining = Math.max(0, GOAL - customer.points);
+  const last4 = customer.phone.slice(-4);
 
+  /* ── الصفحة الرئيسية: النقاط + النشاطات ──────────────── */
   return (
-    <div style={{
-      minHeight: '100dvh',
-      background: 'radial-gradient(ellipse 80% 50% at 50% 0%, rgba(201,164,60,0.08) 0%, transparent 60%), var(--dark-900)',
-      display: 'flex', flexDirection: 'column', alignItems: 'center',
-      paddingBottom: '2.5rem',
-    }}>
+    <div style={pageStyle}>
+      <Hero />
 
-      <Header
-        start={<a href="/" className="cc-btn-ghost" style={{ fontSize: '0.8rem' }}>← خروج</a>}
-      />
-
-      {/* بطاقة النقاط */}
       <div
         className={`cc-card anim-in${flashNew ? ' pulse-gold' : ''}`}
-        style={{ width: 'calc(100% - 2rem)', maxWidth: '440px', marginTop: '1.25rem', padding: '1.75rem', textAlign: 'center' }}
+        style={{ width: '100%', maxWidth: '420px', padding: '2rem', textAlign: 'center' }}
       >
-        {/* الرقم */}
-        <p style={{ margin: '0 0 0.15rem', fontSize: '0.85rem', color: 'var(--text-muted)', letterSpacing: '1px' }}>
-          رصيد النقاط
+        <p style={{ margin: '0 0 0.2rem', fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+          أهلاً بك، •• {last4}
         </p>
-        <p style={{
-          margin: '0 0 0.1rem',
-          fontSize: '4.5rem', fontWeight: 900, lineHeight: 1,
-          background: 'var(--gold-gradient)',
-          WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
-        }}>
-          {customer.points}
-        </p>
-        <p style={{ margin: '0 0 1.5rem', fontSize: '0.8rem', color: 'var(--text-dim)', direction: 'ltr' }}>
-          {customer.phone}
+        <p style={{ margin: '0 0 1.5rem', fontSize: '0.78rem', color: 'var(--text-dim)' }}>
+          رقم العضوية المرتبط بهاتفك
         </p>
 
-        <div className="cc-divider" style={{ marginBottom: '1.25rem' }} />
+        <ProgressCircle points={customer.points} />
 
-        <ProgressRow points={customer.points} />
+        <p style={{ margin: '1.25rem 0 0', fontSize: '0.95rem', color: 'var(--text-muted)' }}>
+          {canRedeem
+            ? <span style={{ color: 'var(--gold-300)', fontWeight: 700 }}>🎉 وصلت لعشر نقاط — قهوتك المجانية جاهزة!</span>
+            : <>باقي <b style={{ color: 'var(--gold-300)' }}>{remaining}</b> {remaining === 1 ? 'نقطة' : 'نقاط'} للقهوة المجانية</>
+          }
+        </p>
 
         {flashNew && (
           <div style={{
             marginTop: '1rem', padding: '0.6rem 1rem',
-            background: 'rgba(201,164,60,0.12)',
-            border: '1px solid rgba(201,164,60,0.4)',
-            borderRadius: '0.75rem',
-            color: 'var(--gold-300)', fontWeight: 700, fontSize: '0.92rem',
+            background: 'rgba(201,164,60,0.12)', border: '1px solid rgba(201,164,60,0.4)',
+            borderRadius: '0.75rem', color: 'var(--gold-300)', fontWeight: 700, fontSize: '0.92rem',
           }}>
             +1 نقطة جديدة! ☕
           </div>
@@ -199,69 +290,52 @@ export default function CustomerPage() {
             {redeemMsg}
           </div>
         )}
-      </div>
 
-      {/* أزرار */}
-      <div style={{ width: 'calc(100% - 2rem)', maxWidth: '440px', marginTop: '0.85rem', display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
         {canRedeem && (
           <button
             className="cc-btn-gold"
             onClick={handleRedeem}
             disabled={redeeming}
-            style={{ fontSize: '1.05rem', padding: '1rem' }}
+            style={{ marginTop: '1.5rem', fontSize: '1.1rem', padding: '1.05rem' }}
           >
-            {redeeming ? <span className="spinner" style={{ borderTopColor: 'var(--dark-900)' }} /> : '🎁 استبدال قهوة مجانية (10 نقاط)'}
+            {redeeming ? <span className="spinner" style={{ borderTopColor: 'var(--dark-900)' }} /> : '🎁 استبدل الآن'}
           </button>
         )}
-
-        <button className="cc-btn-outline" onClick={() => setShowQr(!showQr)}>
-          {showQr ? '▲ إخفاء رمز QR' : '📲 رمز QR الخاص بي'}
-        </button>
-
-        <button className="cc-btn-outline" onClick={() => setHistory(!showHistory)}>
-          {showHistory ? '▲ إخفاء السجل' : '📋 تاريخ النقاط'}
-        </button>
       </div>
 
-      {/* QR Code */}
-      {showQr && (
-        <div className="cc-card anim-in" style={{ width: 'calc(100% - 2rem)', maxWidth: '440px', marginTop: '0.75rem', padding: '1.5rem', textAlign: 'center' }}>
-          <p style={{ margin: '0 0 1.25rem', fontWeight: 700, color: 'var(--text-primary)', fontSize: '1rem' }}>
-            رمز QR الخاص بك
+      {/* آخر النشاطات */}
+      <div className="cc-card anim-in" style={{ width: '100%', maxWidth: '420px', marginTop: '0.85rem', padding: '1.5rem' }}>
+        <p style={{ margin: '0 0 0.85rem', fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.98rem' }}>
+          📋 آخر النشاطات
+        </p>
+        {log.length === 0 ? (
+          <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem', margin: '0.5rem 0' }}>
+            لا يوجد نشاط بعد — أول زيارة لك تُضاف تلقائياً هنا
           </p>
-          <QrImage phone={customer.phone} />
-          <p style={{ margin: '1rem 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-            أظهره للكاشير عند كل كوب ☕
-          </p>
-        </div>
-      )}
-
-      {/* السجل */}
-      {showHistory && (
-        <div className="cc-card anim-in" style={{ width: 'calc(100% - 2rem)', maxWidth: '440px', marginTop: '0.75rem', padding: '1.25rem' }}>
-          <p style={{ margin: '0 0 0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>📋 تاريخ النقاط</p>
-          {log.length === 0
-            ? <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>لا يوجد سجل بعد</p>
-            : log.map(entry => (
-              <div key={entry.id} style={{
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                padding: '0.6rem 0',
-                borderBottom: '1px solid rgba(201,164,60,0.1)',
+        ) : (
+          log.map(entry => (
+            <div key={entry.id} style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              padding: '0.6rem 0', borderBottom: '1px solid rgba(201,164,60,0.1)',
+            }}>
+              <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                {formatActivityTime(entry.createdAt)}
+              </span>
+              <span style={{
+                fontWeight: 800, fontSize: '0.92rem',
+                color: entry.action === 'add' ? 'var(--gold-300)' : '#E57373',
               }}>
-                <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                  {new Date(entry.createdAt).toLocaleDateString('ar-JO', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                </span>
-                <span style={{
-                  fontWeight: 800, fontSize: '0.92rem',
-                  color: entry.action === 'add' ? 'var(--gold-300)' : '#E57373',
-                }}>
-                  {entry.action === 'add' ? '+1 ☕' : '−10 🎁'}
-                </span>
-              </div>
-            ))
-          }
-        </div>
-      )}
+                {entry.action === 'add' ? '+1 نقطة ☕' : '−10 نقاط 🎁'}
+              </span>
+            </div>
+          ))
+        )}
+      </div>
+
+      <div style={{ display: 'flex', gap: '1.25rem', marginTop: '1.5rem' }}>
+        <button className="cc-btn-ghost" onClick={changeNumber}>🔄 تغيير رقم الهاتف</button>
+        <a href="/admin" className="cc-btn-ghost" style={{ textDecoration: 'none' }}>🔒 لوحة الكاشير</a>
+      </div>
     </div>
   );
 }
