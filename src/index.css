@@ -53,7 +53,33 @@ body {
   min-height: 100dvh;
   overflow-x: hidden;
   background: var(--dark-900);
+  padding-bottom: env(safe-area-inset-bottom);
 }
+
+/* ── Focus states (accessibility + polish) ─── */
+a, button, input {
+  -webkit-tap-highlight-color: transparent;
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--gold-400);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: rgba(201, 164, 60, 0.35);
+  color: var(--text-primary);
+}
+
+/* ── Scrollbar (WebKit) ───────────────────── */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--dark-900); }
+::-webkit-scrollbar-thumb {
+  background: var(--dark-500);
+  border-radius: 8px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--gold-600); }
 
 /* ── Shared Cards ─────────────────────── */
 .cc-card {

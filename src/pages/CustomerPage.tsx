@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { findCustomer, redeemCoffee, getPointsLog, subscribeToCustomer } from '../lib/db';
 import { Customer, PointsLog } from '../types';
+import Header from '../components/Header';
 
 const GOAL = 10;
 
@@ -145,16 +146,9 @@ export default function CustomerPage() {
       paddingBottom: '2.5rem',
     }}>
 
-      {/* هيدر */}
-      <div style={{
-        width: '100%', maxWidth: '440px',
-        padding: '1.25rem 1.25rem 0',
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-      }}>
-        <a href="/" className="cc-btn-ghost" style={{ fontSize: '0.8rem' }}>← خروج</a>
-        <img src="/logo.jpg" alt="Classic Cafe" className="cc-logo-sm" />
-        <div style={{ width: 48 }} />
-      </div>
+      <Header
+        start={<a href="/" className="cc-btn-ghost" style={{ fontSize: '0.8rem' }}>← خروج</a>}
+      />
 
       {/* بطاقة النقاط */}
       <div

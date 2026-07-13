@@ -2,6 +2,7 @@ import { useState, useCallback, FormEvent } from 'react';
 import { findCustomer, addPoint } from '../lib/db';
 import { Customer } from '../types';
 import QRScanner from '../components/QRScanner';
+import Header from '../components/Header';
 
 const PIN: string = import.meta.env.VITE_CASHIER_PIN ?? '';
 
@@ -110,21 +111,16 @@ export default function AdminPage() {
       padding: '0 1rem 2.5rem',
     }}>
 
-      {/* هيدر */}
-      <div style={{
-        width: '100%', maxWidth: '440px',
-        padding: '1.25rem 0 0',
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-      }}>
-        <button
-          className="cc-btn-ghost"
-          onClick={() => { setState('pin'); setPinInput(''); }}
-        >
-          🔒 قفل
-        </button>
-        <img src="/logo.jpg" alt="Classic Cafe" className="cc-logo-sm" />
-        <div style={{ width: 48 }} />
-      </div>
+      <Header
+        start={
+          <button
+            className="cc-btn-ghost"
+            onClick={() => { setState('pin'); setPinInput(''); }}
+          >
+            🔒 قفل
+          </button>
+        }
+      />
 
       {/* بطاقة المسح */}
       <div className="cc-card anim-in" style={{ width: '100%', maxWidth: '440px', marginTop: '1.25rem', padding: '2rem', textAlign: 'center' }}>
