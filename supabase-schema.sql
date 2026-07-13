@@ -39,23 +39,7 @@ begin
 end;
 $$;
 
--- 4) دالة إضافة نقاط من جانب العميل (نفس المنطق — بدون PIN)
-create or replace function add_points_customer(p_phone text, p_amount integer)
-returns void language plpgsql security definer as
-$$
-begin
-  if p_amount <= 0 then
-    raise exception 'قيمة النقاط يجب أن تكون أكبر من صفر';
-  end if;
-  update customers set points = points + p_amount where phone = p_phone;
-  if not found then
-    raise exception 'العميل غير موجود: %', p_phone;
-  end if;
-  insert into points_log (phone, action, points) values (p_phone, 'add', p_amount);
-end;
-$$;
-
--- 5) دالة استبدال قهوة مجانية (7 نقاط = قهوة)
+-- 4) دالة استبدال قهوة مجانية (7 نقاط = قهوة)
 create or replace function redeem_coffee(p_phone text)
 returns void language plpgsql security definer as
 $$

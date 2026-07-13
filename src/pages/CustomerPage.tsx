@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, CSSProperties } from 'react';
+import { useEffect, useState, useCallback, FormEvent, CSSProperties } from 'react';
 import { findCustomer, createCustomer, getPointsLog, subscribeToCustomer } from '../lib/db';
 import { Customer, PointsLog } from '../types';
 
@@ -96,7 +96,6 @@ export default function CustomerPage() {
 
   const [customer, setCustomer]   = useState<Customer | null>(null);
   const [log, setLog]             = useState<PointsLog[]>([]);
-  const [logFilter, setLogFilter] = useState<'all' | 'add' | 'redeem'>('all');
   const [errorMsg, setErrorMsg]   = useState('');
   const [flashNew, setFlashNew]   = useState(false);
   const [flashPoints, setFlashPoints] = useState(0);
@@ -273,36 +272,18 @@ export default function CustomerPage() {
 
       {/* السجل الكامل */}
       <div className="cc-card anim-in" style={{ width: '100%', maxWidth: '420px', marginTop: '0.85rem', padding: '1.5rem' }}>
-        {/* عنوان + تصفية */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.9rem' }}>
+        {/* عنوان */}
+        <div style={{ marginBottom: '0.9rem' }}>
           <p style={{ margin: 0, fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.98rem' }}>
             📋 السجل
           </p>
-          <div style={{ display: 'flex', gap: '0.3rem' }}>
-            {(['all', 'add', 'redeem'] as const).map(f => (
-              <button
-                key={f}
-                onClick={() => setLogFilter(f)}
-                style={{
-                  fontSize: '0.72rem', padding: '0.2rem 0.55rem',
-                  borderRadius: '0.4rem', border: 'none', cursor: 'pointer',
-                  fontFamily: 'inherit', fontWeight: 600,
-                  background: logFilter === f ? 'rgba(201,164,60,0.25)' : 'rgba(255,255,255,0.04)',
-                  color: logFilter === f ? 'var(--gold-300)' : 'var(--text-dim)',
-                  transition: 'all 0.15s',
-                }}
-              >
-                {f === 'all' ? 'الكل' : f === 'add' ? '☕ إضافة' : '🎁 استبدال'}
-              </button>
-            ))}
-          </div>
         </div>
 
         {(() => {
-          const filtered = log.filter(e => logFilter === 'all' || e.action === logFilter);
+          const filtered = log;
           if (filtered.length === 0) return (
             <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.88rem', margin: '0.75rem 0' }}>
-              {log.length === 0 ? 'لا يوجد نشاط بعد' : 'لا توجد إدخالات من هذا النوع'}
+              لا يوجد نشاط بعد
             </p>
           );
           return filtered.map((entry, i) => {
