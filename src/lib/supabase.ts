@@ -1,18 +1,38 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+const rawUrl     = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+const anonKey    = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+
+// تأكد أن الـ URL يبدأ بـ https:// (يُصحّح الإدخال بدون البروتوكول)
+function normaliseUrl(url: string | undefined): string | undefined {
+  if (!url) return undefined;
+  const trimmed = url.trim();
+  if (!trimmed) return undefined;
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
+  return 'https://' + trimmed;
+}
+
+const supabaseUrl = normaliseUrl(rawUrl);
+
+function isValidHttpsUrl(url: string | undefined): boolean {
+  if (!url) return false;
+  try { return new URL(url).protocol === 'https:'; } catch { return false; }
+}
 
 export const isSupabaseConfigured = Boolean(
-  supabaseUrl && supabaseAnonKey &&
+  isValidHttpsUrl(supabaseUrl) &&
+  anonKey &&
   supabaseUrl !== 'https://placeholder.supabase.co'
 );
 
 if (!isSupabaseConfigured) {
-  console.warn('[Classic Cafe] لم يتم ضبط بيانات Supabase — يرجى إضافة VITE_SUPABASE_URL و VITE_SUPABASE_ANON_KEY في الإعدادات.');
+  console.warn(
+    '[Classic Cafe] بيانات Supabase غير مضبوطة أو غير صالحة — تأكد من صحة VITE_SUPABASE_URL و VITE_SUPABASE_ANON_KEY.',
+    { supabaseUrl, hasKey: Boolean(anonKey) }
+  );
 }
 
 export const supabase = createClient(
-  supabaseUrl || 'https://placeholder.supabase.co',
-  supabaseAnonKey || 'placeholder-anon-key'
+  isSupabaseConfigured ? supabaseUrl! : 'https://placeholder.supabase.co',
+  isSupabaseConfigured ? anonKey!     : 'placeholder-anon-key',
 );
