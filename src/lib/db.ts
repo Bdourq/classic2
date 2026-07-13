@@ -24,6 +24,15 @@ export async function createCustomer(phone: string): Promise<Customer> {
   return { phone: data.phone, points: data.points, createdAt: data.created_at };
 }
 
+export async function getAllCustomers(): Promise<Customer[]> {
+  const { data, error } = await supabase
+    .from('customers')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map((r) => ({ phone: r.phone, points: r.points, createdAt: r.created_at }));
+}
+
 // ─── النقاط ────────────────────────────────────────────────
 
 /** يضيف نقاطاً للزبون بناءً على قيمة المشتريات — كل دينار = نقطة */

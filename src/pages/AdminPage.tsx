@@ -1,5 +1,5 @@
-import { useState, useCallback, FormEvent } from 'react';
-import { findCustomer, addPoint, redeemCoffee } from '../lib/db';
+import { useState, useCallback, useEffect, FormEvent } from 'react';
+import { findCustomer, addPoint, redeemCoffee, getAllCustomers } from '../lib/db';
 import { Customer } from '../types';
 import QRScanner from '../components/QRScanner';
 import Header from '../components/Header';
@@ -42,12 +42,32 @@ export default function AdminPage() {
   const [scannedCustomer, setScannedCustomer] = useState<Customer | null>(null);
 
   // lookup & redeem
-  const [lookupPhone, setLookupPhone]     = useState('');
+  const [lookupPhone, setLookupPhone]       = useState('');
   const [lookupCustomer, setLookupCustomer] = useState<Customer | null>(null);
-  const [lookupLoading, setLookupLoading] = useState(false);
-  const [lookupError, setLookupError]     = useState('');
-  const [redeeming, setRedeeming]         = useState(false);
-  const [redeemMsg, setRedeemMsg]         = useState('');
+  const [lookupLoading, setLookupLoading]   = useState(false);
+  const [lookupError, setLookupError]       = useState('');
+  const [redeeming, setRedeeming]           = useState(false);
+  const [redeemMsg, setRedeemMsg]           = useState('');
+
+  // customers list
+  const [allCustomers, setAllCustomers]     = useState<Customer[]>([]);
+  const [listLoading, setListLoading]       = useState(false);
+  const [listError, setListError]           = useState('');
+  const [search, setSearch]                 = useState('');
+  const [showList, setShowList]             = useState(false);
+
+  /* ── جلب قائمة العملاء عند فتح القسم ─────────────────── */
+  async function loadAllCustomers() {
+    setListLoading(true); setListError('');
+    try { setAllCustomers(await getAllCustomers()); }
+    catch (e: any) { setListError(e?.message ?? 'خطأ أثناء تحميل العملاء'); }
+    finally { setListLoading(false); }
+  }
+
+  useEffect(() => {
+    if (showList && state === 'idle') loadAllCustomers();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showList, state]);
 
   /* ── حساب النقاط: كل دينار = نقطة واحدة ──────────────── */
   function calcPoints(jd: string): number {
@@ -511,6 +531,108 @@ export default function AdminPage() {
               </button>
             </>
           ) : null}
+        </div>
+      )}
+
+      {/* ── قائمة العملاء المسجّلين ──────────────────────── */}
+      {state === 'idle' && (
+        <div className="cc-card anim-in" style={{ width: '100%', maxWidth: '440px', marginTop: '0.85rem', padding: '1.5rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: showList ? '1rem' : 0 }}>
+            <div>
+              <p style={{ margin: 0, fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.98rem' }}>
+                👥 العملاء المسجّلون
+              </p>
+              {!showList && (
+                <p style={{ margin: '0.2rem 0 0', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                  جميع الأرقام التي سجّلت في النظام
+                </p>
+              )}
+            </div>
+            <button
+              className="cc-btn-ghost"
+              style={{ padding: '0.35rem 0.9rem', fontSize: '0.82rem', flexShrink: 0 }}
+              onClick={() => setShowList(v => !v)}
+            >
+              {showList ? 'إخفاء ▲' : 'عرض ▼'}
+            </button>
+          </div>
+
+          {showList && (
+            <>
+              {/* شريط البحث + زر تحديث */}
+              <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.85rem' }}>
+                <input
+                  className="cc-input"
+                  type="tel"
+                  placeholder="بحث برقم الهاتف..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  style={{ flex: 1, marginBottom: 0, direction: 'ltr', textAlign: 'left' }}
+                />
+                <button
+                  className="cc-btn-ghost"
+                  onClick={loadAllCustomers}
+                  disabled={listLoading}
+                  style={{ flexShrink: 0, padding: '0 0.85rem', fontSize: '0.82rem' }}
+                >
+                  {listLoading ? <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> : '↻'}
+                </button>
+              </div>
+
+              {listError && (
+                <p style={{ color: '#E57373', fontSize: '0.85rem', textAlign: 'center', margin: '0.5rem 0' }}>{listError}</p>
+              )}
+
+              {listLoading && !allCustomers.length ? (
+                <div style={{ textAlign: 'center', padding: '1rem 0' }}>
+                  <span className="spinner" style={{ width: 24, height: 24, borderWidth: 2 }} />
+                </div>
+              ) : (() => {
+                const filtered = allCustomers.filter(c =>
+                  !search.trim() || c.phone.includes(search.trim())
+                );
+                return filtered.length === 0 ? (
+                  <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.88rem', margin: '0.75rem 0' }}>
+                    {search ? 'لا توجد نتائج' : 'لا يوجد عملاء مسجّلون بعد'}
+                  </p>
+                ) : (
+                  <>
+                    <p style={{ margin: '0 0 0.6rem', fontSize: '0.75rem', color: 'var(--text-dim)' }}>
+                      {filtered.length} {filtered.length === 1 ? 'عميل' : 'عملاء'}
+                      {search ? ` — نتائج البحث` : ' إجمالاً'}
+                    </p>
+                    <div style={{ maxHeight: '340px', overflowY: 'auto', marginInline: '-0.25rem' }}>
+                      {filtered.map((c, i) => (
+                        <div key={c.phone} style={{
+                          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                          padding: '0.6rem 0.25rem',
+                          borderBottom: i < filtered.length - 1 ? '1px solid rgba(201,164,60,0.1)' : 'none',
+                        }}>
+                          <div>
+                            <span style={{ fontSize: '0.88rem', color: 'var(--text-primary)', direction: 'ltr', display: 'block' }}>
+                              {c.phone}
+                            </span>
+                            <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)' }}>
+                              {new Date(c.createdAt).toLocaleDateString('ar-JO', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            </span>
+                          </div>
+                          <span style={{
+                            fontWeight: 800, fontSize: '0.92rem',
+                            color: c.points > 0 ? 'var(--gold-300)' : 'var(--text-dim)',
+                            background: 'rgba(201,164,60,0.08)',
+                            border: '1px solid rgba(201,164,60,0.2)',
+                            borderRadius: '0.5rem', padding: '0.2rem 0.6rem',
+                          }}>
+                            {c.points} نقطة
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                );
+              })()}
+            </>
+          )}
         </div>
       )}
 
