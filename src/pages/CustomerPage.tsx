@@ -96,9 +96,10 @@ export default function CustomerPage() {
 
   const [customer, setCustomer]   = useState<Customer | null>(null);
   const [log, setLog]             = useState<PointsLog[]>([]);
-  const [redeeming, setRedeeming]     = useState(false);
-  const [redeemMsg, setRedeemMsg]     = useState('');
+  const [redeeming, setRedeeming]       = useState(false);
+  const [redeemMsg, setRedeemMsg]       = useState('');
   const [redeemAmount, setRedeemAmount] = useState('');
+  const [logFilter, setLogFilter]       = useState<'all' | 'add' | 'redeem'>('all');
   const [errorMsg, setErrorMsg]   = useState('');
   const [flashNew, setFlashNew]   = useState(false);
   const [flashPoints, setFlashPoints] = useState(0);
@@ -115,7 +116,7 @@ export default function CustomerPage() {
         return c;
       });
       const l = await getPointsLog(p);
-      setLog(l.slice(0, 5));
+      setLog(l.slice(0, 20));
       setStage('ready');
     } catch (e: any) {
       setErrorMsg(e?.message ?? 'حدث خطأ أثناء تحميل البيانات');
@@ -326,33 +327,72 @@ export default function CustomerPage() {
       )}
 
 
-      {/* آخر النشاطات */}
+      {/* السجل الكامل */}
       <div className="cc-card anim-in" style={{ width: '100%', maxWidth: '420px', marginTop: '0.85rem', padding: '1.5rem' }}>
-        <p style={{ margin: '0 0 0.85rem', fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.98rem' }}>
-          📋 آخر النشاطات
-        </p>
-        {log.length === 0 ? (
-          <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem', margin: '0.5rem 0' }}>
-            لا يوجد نشاط بعد — أول زيارة لك تُضاف تلقائياً هنا
+        {/* عنوان + تصفية */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.9rem' }}>
+          <p style={{ margin: 0, fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.98rem' }}>
+            📋 السجل
           </p>
-        ) : (
-          log.map(entry => (
-            <div key={entry.id} style={{
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              padding: '0.6rem 0', borderBottom: '1px solid rgba(201,164,60,0.1)',
-            }}>
-              <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                {formatActivityTime(entry.createdAt)}
-              </span>
-              <span style={{
-                fontWeight: 800, fontSize: '0.92rem',
-                color: entry.action === 'add' ? 'var(--gold-300)' : '#E57373',
+          <div style={{ display: 'flex', gap: '0.3rem' }}>
+            {(['all', 'add', 'redeem'] as const).map(f => (
+              <button
+                key={f}
+                onClick={() => setLogFilter(f)}
+                style={{
+                  fontSize: '0.72rem', padding: '0.2rem 0.55rem',
+                  borderRadius: '0.4rem', border: 'none', cursor: 'pointer',
+                  fontFamily: 'inherit', fontWeight: 600,
+                  background: logFilter === f ? 'rgba(201,164,60,0.25)' : 'rgba(255,255,255,0.04)',
+                  color: logFilter === f ? 'var(--gold-300)' : 'var(--text-dim)',
+                  transition: 'all 0.15s',
+                }}
+              >
+                {f === 'all' ? 'الكل' : f === 'add' ? '☕ إضافة' : '🎁 استبدال'}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {(() => {
+          const filtered = log.filter(e => logFilter === 'all' || e.action === logFilter);
+          if (filtered.length === 0) return (
+            <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.88rem', margin: '0.75rem 0' }}>
+              {log.length === 0 ? 'لا يوجد نشاط بعد' : 'لا توجد إدخالات من هذا النوع'}
+            </p>
+          );
+          return filtered.map((entry, i) => {
+            const isAdd = entry.action === 'add';
+            const pts   = Math.abs(entry.points);
+            return (
+              <div key={entry.id} style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '0.65rem 0',
+                borderBottom: i < filtered.length - 1 ? '1px solid rgba(201,164,60,0.1)' : 'none',
               }}>
-                {entry.action === 'add' ? `+${entry.points} ${entry.points === 1 ? 'نقطة' : 'نقاط'} ☕` : `−${Math.abs(entry.points)} نقاط 🎁`}
-              </span>
-            </div>
-          ))
-        )}
+                <div>
+                  <span style={{
+                    display: 'inline-block', fontSize: '0.7rem', fontWeight: 700,
+                    padding: '0.15rem 0.45rem', borderRadius: '0.35rem', marginBottom: '0.2rem',
+                    background: isAdd ? 'rgba(201,164,60,0.12)' : 'rgba(229,115,115,0.12)',
+                    color: isAdd ? 'var(--gold-400)' : '#E57373',
+                  }}>
+                    {isAdd ? 'إضافة نقاط' : 'استبدال'}
+                  </span>
+                  <span style={{ display: 'block', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                    {formatActivityTime(entry.createdAt)}
+                  </span>
+                </div>
+                <span style={{
+                  fontWeight: 800, fontSize: '0.95rem',
+                  color: isAdd ? 'var(--gold-300)' : '#E57373',
+                }}>
+                  {isAdd ? `+${pts}` : `−${pts}`} {pts === 1 ? 'نقطة' : 'نقاط'}
+                </span>
+              </div>
+            );
+          });
+        })()}
       </div>
 
       <div style={{ display: 'flex', gap: '1.25rem', marginTop: '1.5rem' }}>
