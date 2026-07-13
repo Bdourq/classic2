@@ -1,9 +1,9 @@
 -- ============================================================
--- Classic Cafe — قاعدة بيانات نظام الولاء (النسخة المحدّثة)
+-- Classic Cafe — قاعدة بيانات نظام الولاء
 -- شغّل هذا الملف كاملاً من: Supabase Dashboard > SQL Editor > New query
 -- ============================================================
 
--- 1) جدول الزبائن (phone فقط — بدون اسم)
+-- 1) جدول الزبائن
 create table if not exists customers (
   phone text primary key,
   points integer not null default 0,
@@ -21,10 +21,27 @@ create table if not exists points_log (
 
 create index if not exists idx_points_log_phone on points_log(phone);
 
--- 3) دالة إضافة نقطة واحدة (يستدعيها الكاشير عند مسح QR)
-create or replace function add_point(p_phone text)
+-- 3) جدول إعدادات الكافيه (PIN الكاشير — لا يُقرأ مباشرة بسبب RLS)
+create table if not exists cafe_config (
+  key text primary key,
+  value text not null
+);
+
+-- ⚠️ غيّر '1234' إلى PIN الكاشير الذي اخترته قبل تشغيل هذا الملف
+insert into cafe_config (key, value) values ('cashier_pin', '1234')
+  on conflict (key) do update set value = excluded.value;
+
+-- 4) دالة إضافة نقطة — تتحقق من PIN الكاشير على جانب الخادم
+create or replace function add_point(p_phone text, p_pin text)
 returns void language plpgsql security definer as $$
+declare
+  stored_pin text;
 begin
+  select value into stored_pin from cafe_config where key = 'cashier_pin';
+  if stored_pin is null or p_pin <> stored_pin then
+    raise exception 'Unauthorized: invalid cashier PIN';
+  end if;
+
   update customers set points = points + 1 where phone = p_phone;
   if not found then
     raise exception 'العميل غير موجود: %', p_phone;
@@ -33,7 +50,7 @@ begin
 end;
 $$;
 
--- 4) دالة استبدال 10 نقاط بقهوة مجانية
+-- 5) دالة استبدال قهوة مجانية (10 نقاط) — لا تحتاج PIN لأنها تُستدعى من شاشة العميل
 create or replace function redeem_coffee(p_phone text)
 returns void language plpgsql security definer as $$
 declare
@@ -51,19 +68,25 @@ begin
 end;
 $$;
 
--- 5) أمان مستوى الصف (RLS)
+-- 6) أمان مستوى الصف (RLS)
 alter table customers enable row level security;
 alter table points_log enable row level security;
+alter table cafe_config enable row level security;
 
+-- الزبائن: قراءة وتسجيل للجميع
 drop policy if exists "read_customers" on customers;
 create policy "read_customers" on customers for select using (true);
 
 drop policy if exists "insert_customers" on customers;
 create policy "insert_customers" on customers for insert with check (true);
 
+-- سجل النقاط: قراءة فقط للجميع (الكتابة تمر عبر الدوال SECURITY DEFINER فقط)
 drop policy if exists "read_points_log" on points_log;
 create policy "read_points_log" on points_log for select using (true);
 
--- 6) البث اللحظي (Realtime)
+-- الإعدادات: لا سياسات = لا يُقرأ/يُكتب مباشرة من العميل
+-- القراءة تتم فقط من داخل دوال SECURITY DEFINER
+
+-- 7) البث اللحظي
 alter publication supabase_realtime add table customers;
 alter publication supabase_realtime add table points_log;

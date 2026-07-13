@@ -1,9 +1,9 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, FormEvent } from 'react';
 import { findCustomer, addPoint } from '../lib/db';
 import { Customer } from '../types';
 import QRScanner from '../components/QRScanner';
 
-const PIN = import.meta.env.VITE_CASHIER_PIN || '1234';
+const PIN: string = import.meta.env.VITE_CASHIER_PIN ?? '';
 
 type State = 'pin' | 'idle' | 'scanning' | 'result';
 
@@ -32,7 +32,7 @@ export default function AdminPage() {
   const [result, setResult] = useState<ScanResult | null>(null);
   const [processing, setProcessing] = useState(false);
 
-  function handlePin(e: React.FormEvent) {
+  function handlePin(e: FormEvent) {
     e.preventDefault();
     if (pinInput === PIN) {
       setState('idle');
@@ -56,7 +56,7 @@ export default function AdminPage() {
         setProcessing(false);
         return;
       }
-      await addPoint(phone);
+      await addPoint(phone, PIN);
       const updated = await findCustomer(phone);
       setResult({
         phone,

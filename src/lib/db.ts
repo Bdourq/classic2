@@ -26,9 +26,9 @@ export async function createCustomer(phone: string): Promise<Customer> {
 
 // ─── النقاط ────────────────────────────────────────────────
 
-/** يضيف نقطة واحدة للزبون (يستدعيها الكاشير بعد مسح QR) */
-export async function addPoint(phone: string): Promise<void> {
-  const { error } = await supabase.rpc('add_point', { p_phone: phone });
+/** يضيف نقطة واحدة للزبون — يُرسل PIN للتحقق منه على جانب الخادم */
+export async function addPoint(phone: string, pin: string): Promise<void> {
+  const { error } = await supabase.rpc('add_point', { p_phone: phone, p_pin: pin });
   if (error) throw error;
 }
 
