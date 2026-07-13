@@ -98,8 +98,8 @@ export default function CoffeeCup({ points, maxPoints = 100 }: CoffeeCupProps) {
           {/* Inner Cup Background (Dark shadow inside empty cup) */}
           <path
             d="M 45 65 L 58 165 C 59 173, 67 180, 75 180 L 125 180 C 133 180, 141 173, 142 165 L 155 65 Z"
-            fill="#1A0F0A"
-            stroke="#2B1B12"
+            fill="#0A0A0A"
+            stroke="#121212"
             strokeWidth="1"
           />
 
@@ -179,32 +179,32 @@ export default function CoffeeCup({ points, maxPoints = 100 }: CoffeeCupProps) {
         </svg>
 
         {/* Floating circular points tag in center of cup */}
-        <div className="absolute bottom-4 bg-[#1A0F0A] text-[#EDE0D4] border-2 border-[#d4af37] px-4 py-1.5 rounded-full flex items-center gap-1.5 shadow-lg select-none font-bold">
+        <div className="absolute bottom-4 bg-[#0A0A0A] text-[#EDE0D4] border-2 border-[#d4af37] px-4 py-1.5 rounded-full flex items-center gap-1.5 shadow-[0_4px_20px_rgba(212,175,55,0.25)] select-none font-bold">
           <span className="text-[#d4af37] text-lg font-mono">{points}</span>
           <span className="text-xs font-sans">نقطة</span>
         </div>
       </div>
 
       {/* Target marker & Progress indicator */}
-      <div className="w-full max-w-xs mt-3 bg-[#1A0F0A]/60 backdrop-blur-md border border-[#d4af37]/30 rounded-2xl p-3 shadow-md flex flex-col gap-1.5 text-center">
-        <div className="flex justify-between items-center text-xs font-semibold text-[#EDE0D4]">
+      <div className="w-full max-w-xs mt-3 bg-black/60 backdrop-blur-md border border-[#d4af37]/35 rounded-2xl p-3.5 shadow-xl flex flex-col gap-1.5 text-center">
+        <div className="flex justify-between items-center text-xs font-bold text-[#EDE0D4]">
           <span>الهدف: {maxPoints} نقاط (أكواب)</span>
           <span className="flex items-center gap-1 text-[#d4af37]">
             <Trophy className="w-3.5 h-3.5" />
             <span>كوب مجاني!</span>
           </span>
         </div>
-        <div className="w-full bg-[#2B1B12] rounded-full h-2.5 overflow-hidden border border-[#d4af37]/20">
+        <div className="w-full bg-[#121212] rounded-full h-2.5 overflow-hidden border border-[#d4af37]/15">
           <motion.div
-            className="bg-gradient-to-r from-[#d4af37] to-[#dfb841] h-full rounded-full"
+            className="bg-gradient-to-r from-[#B89742] via-[#F5E2A8] to-[#B89742] h-full rounded-full"
             initial={{ width: 0 }}
             animate={{ width: `${percentage}%` }}
             transition={{ type: "spring", stiffness: 60, damping: 15 }}
           />
         </div>
-        <div className="text-xs text-stone-400 font-medium">
+        <div className="text-xs text-stone-300 font-medium">
           {percentage === 100 ? (
-            <span className="text-[#d4af37] font-bold animate-pulse">🎉 مبروك! لقد حصلت على كوب مجاني</span>
+            <span className="text-[#d4af37] font-black animate-pulse">🎉 مبروك! لقد حصلت على كوب مجاني</span>
           ) : (
             <span>متبقي {maxPoints - points} أكواب للحصول على مكافأتك</span>
           )}

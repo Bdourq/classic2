@@ -58,25 +58,25 @@ export default function QRScannerSimulator({ onScanSuccess, isOpen, onClose }: Q
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="bg-[#2B1B12] text-[#EDE0D4] rounded-3xl border border-[#D4AF37]/30 shadow-2xl w-full max-w-sm overflow-hidden flex flex-col relative"
+            className="bg-[#0D0D0D]/95 text-[#EDE0D4] rounded-3xl border border-[#D4AF37]/30 shadow-2xl w-full max-w-sm overflow-hidden flex flex-col relative luxury-gold-border backdrop-blur-md"
           >
             {/* Header */}
-            <div className="flex justify-between items-center px-5 py-4 border-b border-[#D4AF37]/20 bg-[#1A0F0A]">
-              <div className="flex items-center gap-2">
-                <div className="p-2 bg-[#d4af37]/10 text-[#d4af37] rounded-xl">
+            <div className="flex justify-between items-center px-5 py-4 border-b border-[#D4AF37]/20 bg-black">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-[#d4af37]/10 text-[#d4af37] rounded-xl border border-[#d4af37]/25">
                   <QrCode className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm text-[#EDE0D4]">محاكي مسح الـ QR Code السحري</h3>
-                  <p className="text-[10px] text-[#EDE0D4]/60">تجربة سريعة بدون تحميل أي تطبيق</p>
+                  <h3 className="font-serif font-black text-sm text-gold-gradient">محاكي مسح الـ QR Code السحري</h3>
+                  <p className="text-[10px] text-stone-400 font-semibold">تجربة سريعة ومباشرة بدون تحميل أي تطبيق</p>
                 </div>
               </div>
               <button
                 onClick={onClose}
-                className="p-1.5 rounded-full hover:bg-[#2B1B12] transition-colors"
+                className="p-1.5 rounded-full hover:bg-black text-stone-400 hover:text-[#D4AF37] border border-transparent hover:border-[#D4AF37]/20 transition-all active:scale-95"
                 disabled={isScanning}
               >
-                <X className="w-5 h-5 text-stone-400" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
@@ -86,17 +86,17 @@ export default function QRScannerSimulator({ onScanSuccess, isOpen, onClose }: Q
                 <>
                   {/* Informative Step */}
                   <div className="text-center space-y-2">
-                    <div className="relative w-44 h-44 bg-[#1A0F0A] border-2 border-dashed border-[#d4af37]/40 rounded-2xl flex items-center justify-center mx-auto shadow-xs">
+                    <div className="relative w-44 h-44 bg-black border-2 border-dashed border-[#d4af37]/30 rounded-2xl flex items-center justify-center mx-auto shadow-sm">
                       {/* Interactive Simulated QR */}
-                      <div className="p-3 bg-[#1A0F0A] rounded-lg border border-[#D4AF37]/20 shadow-sm relative group cursor-pointer hover:border-[#d4af37] transition-all">
+                      <div className="p-3 bg-black rounded-lg border border-[#D4AF37]/20 shadow-sm relative group cursor-pointer hover:border-[#d4af37] transition-all">
                         {/* Custom QR representation */}
                         <div className="w-28 h-28 grid grid-cols-5 gap-0.5 opacity-80">
                           {Array.from({ length: 25 }).map((_, i) => {
                             // Let's make it look like a QR code with corner markers
                             const isCorner = 
                               (i < 2 || i === 4) || 
-                              (i === 5 || i === 9) ||
-                              (i === 20 || i === 24);
+                                (i === 5 || i === 9) ||
+                                (i === 20 || i === 24);
                             return (
                               <div
                                 key={i}
@@ -112,7 +112,7 @@ export default function QRScannerSimulator({ onScanSuccess, isOpen, onClose }: Q
                           })}
                         </div>
                         {/* Coffee bean in middle of QR */}
-                        <div className="absolute inset-0 m-auto w-8 h-8 bg-[#2B1B12] border border-[#D4AF37]/20 rounded-full flex items-center justify-center">
+                        <div className="absolute inset-0 m-auto w-8 h-8 bg-[#0D0D0D] border border-[#D4AF37]/20 rounded-full flex items-center justify-center">
                           <Coffee className="w-4 h-4 text-[#d4af37]" />
                         </div>
                       </div>
@@ -131,7 +131,7 @@ export default function QRScannerSimulator({ onScanSuccess, isOpen, onClose }: Q
                       <button
                         key={pts}
                         onClick={() => startSimulatedScan(pts)}
-                        className="bg-[#1A0F0A] hover:bg-[#D4AF37] hover:text-[#1A0F0A] border border-[#D4AF37]/20 rounded-xl py-3 text-xs font-bold font-mono transition-all active:scale-95 shadow-2xs text-[#EDE0D4] flex flex-col items-center justify-center gap-1"
+                        className="bg-black hover:bg-gradient-to-r hover:from-[#B89742] hover:to-[#F5E2A8] hover:text-stone-950 border border-[#D4AF37]/20 hover:border-transparent rounded-xl py-3 text-xs font-bold font-mono transition-all active:scale-95 shadow-sm text-[#EDE0D4] flex flex-col items-center justify-center gap-1 cursor-pointer"
                       >
                         <span className="text-sm font-black text-[#d4af37]">+{pts}</span>
                         <span className="text-[10px] text-[#EDE0D4]/60 font-normal">
@@ -148,7 +148,7 @@ export default function QRScannerSimulator({ onScanSuccess, isOpen, onClose }: Q
               ) : (
                 /* --- ACTIVE SCANNING ANIMATION --- */
                 <div className="w-full flex flex-col items-center justify-center py-6 space-y-6">
-                  <div className="relative w-56 h-56 bg-[#1A0F0A] rounded-2xl overflow-hidden border-2 border-[#d4af37] shadow-inner flex items-center justify-center">
+                  <div className="relative w-56 h-56 bg-black rounded-2xl overflow-hidden border-2 border-[#d4af37] shadow-inner flex items-center justify-center">
                     {/* Simulated Camera Viewfinder Grid */}
                     <div className="absolute inset-4 border border-white/20 rounded-lg pointer-events-none" />
                     <div className="absolute top-2 left-2 text-[10px] font-mono text-[#d4af37] bg-black/40 px-1.5 py-0.5 rounded-sm flex items-center gap-1">
@@ -208,7 +208,7 @@ export default function QRScannerSimulator({ onScanSuccess, isOpen, onClose }: Q
                       <span>جاري معالجة الكوب...</span>
                       <span>{scanProgress}%</span>
                     </div>
-                    <div className="w-full bg-[#1A0F0A] rounded-full h-1.5 overflow-hidden border border-[#D4AF37]/20">
+                    <div className="w-full bg-black rounded-full h-1.5 overflow-hidden border border-[#D4AF37]/20">
                       <div
                         className="bg-[#d4af37] h-full transition-all duration-75"
                         style={{ width: `${scanProgress}%` }}

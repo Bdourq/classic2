@@ -78,24 +78,24 @@ export default function CashierPanel({ customers, onAddPoints, onClose }: Cashie
   };
 
   return (
-    <div dir="rtl" className="bg-[#2B1B12] text-[#EDE0D4] rounded-3xl border border-[#D4AF37]/30 shadow-2xl p-6 w-full max-w-md mx-auto overflow-hidden relative min-h-[500px] flex flex-col justify-between">
+    <div dir="rtl" className="bg-[#0D0D0D]/95 text-[#EDE0D4] rounded-3xl border border-[#D4AF37]/30 shadow-2xl p-6 w-full max-w-md mx-auto overflow-hidden relative min-h-[500px] flex flex-col justify-between luxury-gold-border backdrop-blur-md">
       {/* Top bar */}
       <div className="flex justify-between items-center pb-4 border-b border-[#D4AF37]/20 mb-4">
-        <div className="flex items-center gap-2">
-          <div className={`p-2 rounded-xl ${isAuthenticated ? 'bg-emerald-500/10 text-emerald-400' : 'bg-[#D4AF37]/10 text-[#D4AF37]'}`}>
+        <div className="flex items-center gap-2.5">
+          <div className={`p-2 rounded-xl border ${isAuthenticated ? 'bg-emerald-950/40 text-emerald-400 border-emerald-500/30' : 'bg-black text-[#D4AF37] border-[#D4AF37]/20'}`}>
             {isAuthenticated ? <Unlock className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
           </div>
           <div>
-            <h3 className="font-bold text-lg text-[#EDE0D4]">لوحة كاشير Classic Cafe</h3>
-            <p className="text-xs text-[#EDE0D4]/60">لإضافة واسترداد نقاط زبائن كلاسيك كافيه 🇯🇴</p>
+            <h3 className="font-serif font-black text-base text-gold-gradient">لوحة كاشير Classic Cafe</h3>
+            <p className="text-[10px] text-stone-400 font-semibold">لإضافة واسترداد نقاط زبائن كلاسيك كافيه 🇯🇴</p>
           </div>
         </div>
         <button
           onClick={onClose}
-          className="p-1.5 rounded-full hover:bg-[#1A0F0A] transition-colors"
+          className="p-1.5 rounded-full hover:bg-black text-stone-400 hover:text-[#D4AF37] border border-transparent hover:border-[#D4AF37]/20 transition-all active:scale-95"
           title="رجوع"
         >
-          <X className="w-5 h-5 text-stone-400" />
+          <X className="w-5 h-5" />
         </button>
       </div>
 
@@ -139,26 +139,26 @@ export default function CashierPanel({ customers, onAddPoints, onClose }: Cashie
                 <button
                   key={num}
                   onClick={() => handleKeyPress(num)}
-                  className="h-14 bg-[#1A0F0A] hover:bg-[#D4AF37] hover:text-[#1A0F0A] border border-[#D4AF37]/20 rounded-2xl text-xl font-bold font-mono transition-all active:scale-95 shadow-xs flex items-center justify-center text-[#EDE0D4]"
+                  className="h-14 bg-black hover:bg-gradient-to-r hover:from-[#B89742] hover:to-[#F5E2A8] hover:text-stone-950 border border-[#D4AF37]/25 hover:border-transparent rounded-2xl text-xl font-bold font-mono transition-all active:scale-95 shadow-md flex items-center justify-center text-[#EDE0D4] cursor-pointer"
                 >
                   {num}
                 </button>
               ))}
               <button
                 onClick={handleClear}
-                className="h-14 bg-[#1A0F0A]/50 hover:bg-[#1A0F0A] border border-[#D4AF37]/10 rounded-2xl text-xs font-semibold transition-all active:scale-95 flex items-center justify-center text-stone-300"
+                className="h-14 bg-black/40 hover:bg-black/80 border border-[#D4AF37]/15 rounded-2xl text-xs font-semibold transition-all active:scale-95 flex items-center justify-center text-stone-300 cursor-pointer"
               >
                 مسح
               </button>
               <button
                 onClick={() => handleKeyPress('0')}
-                className="h-14 bg-[#1A0F0A] hover:bg-[#D4AF37] hover:text-[#1A0F0A] border border-[#D4AF37]/20 rounded-2xl text-xl font-bold font-mono transition-all active:scale-95 shadow-xs flex items-center justify-center text-[#EDE0D4]"
+                className="h-14 bg-black hover:bg-gradient-to-r hover:from-[#B89742] hover:to-[#F5E2A8] hover:text-stone-950 border border-[#D4AF37]/25 hover:border-transparent rounded-2xl text-xl font-bold font-mono transition-all active:scale-95 shadow-md flex items-center justify-center text-[#EDE0D4] cursor-pointer"
               >
                 0
               </button>
               <button
                 onClick={handleBackspace}
-                className="h-14 bg-[#1A0F0A]/50 hover:bg-[#1A0F0A] border border-[#D4AF37]/10 rounded-2xl text-xs font-semibold transition-all active:scale-95 flex items-center justify-center text-stone-300"
+                className="h-14 bg-black/40 hover:bg-black/80 border border-[#D4AF37]/15 rounded-2xl text-xs font-semibold transition-all active:scale-95 flex items-center justify-center text-stone-300 cursor-pointer"
               >
                 تراجع
               </button>
@@ -190,7 +190,7 @@ export default function CashierPanel({ customers, onAddPoints, onClose }: Cashie
                     setSearchPhone(e.target.value);
                     setSelectedPhone(''); // reset selected
                   }}
-                  className="w-full bg-[#1A0F0A] border border-[#D4AF37]/30 rounded-2xl py-3 px-10 text-sm font-sans text-[#EDE0D4] placeholder-stone-500 focus:outline-hidden focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] transition-all"
+                  className="w-full bg-black border border-[#D4AF37]/30 rounded-2xl py-3 px-10 text-sm font-sans text-[#EDE0D4] placeholder-stone-500 focus:outline-hidden focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] transition-all"
                 />
                 <Phone className="absolute right-3.5 top-3.5 w-4.5 h-4.5 text-[#D4AF37]/50" />
                 {searchPhone && (
@@ -204,7 +204,7 @@ export default function CashierPanel({ customers, onAddPoints, onClose }: Cashie
               </div>
 
               {/* Customer List Selection */}
-              <div className="bg-[#1A0F0A] border border-[#D4AF37]/20 rounded-2xl p-2 max-h-40 overflow-y-auto space-y-1">
+              <div className="bg-black/60 border border-[#D4AF37]/20 rounded-2xl p-2 max-h-40 overflow-y-auto space-y-1">
                 {filteredCustomers.length === 0 ? (
                   <div className="py-6 text-center text-xs text-stone-400">
                     لا يوجد زبائن مطابقين للبحث. يمكنك تسجيل زبون جديد في الواجهة الرئيسية.
@@ -219,8 +219,8 @@ export default function CashierPanel({ customers, onAddPoints, onClose }: Cashie
                       }}
                       className={`w-full text-right p-2.5 rounded-xl text-xs flex justify-between items-center transition-all ${
                         selectedPhone === c.phone 
-                          ? 'bg-[#D4AF37] text-[#1A0F0A]' 
-                          : 'hover:bg-[#2B1B12] text-[#EDE0D4]'
+                          ? 'bg-gradient-to-r from-[#B89742] via-[#F5E2A8] to-[#B89742] text-stone-950 font-bold' 
+                          : 'hover:bg-[#121212] text-[#EDE0D4]'
                       }`}
                     >
                       <div>
@@ -230,12 +230,12 @@ export default function CashierPanel({ customers, onAddPoints, onClose }: Cashie
                       <div className="flex items-center gap-2">
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                           selectedPhone === c.phone 
-                            ? 'bg-[#1A0F0A] text-[#D4AF37]' 
-                            : 'bg-[#2B1B12] border border-[#D4AF37]/20 text-[#EDE0D4]'
+                            ? 'bg-black text-[#D4AF37]' 
+                            : 'bg-black border border-[#D4AF37]/20 text-[#EDE0D4]'
                         }`}>
                           {c.points} نقطة
                         </span>
-                        {selectedPhone === c.phone && <Check className="w-3.5 h-3.5 text-[#1A0F0A]" />}
+                        {selectedPhone === c.phone && <Check className="w-3.5 h-3.5 text-stone-950" />}
                       </div>
                     </button>
                   ))
@@ -245,13 +245,13 @@ export default function CashierPanel({ customers, onAddPoints, onClose }: Cashie
               {selectedPhone ? (
                 /* Add Points Controls */
                 <div className="space-y-4 pt-2">
-                  <div className="bg-[#1A0F0A] rounded-2xl p-3 border border-[#D4AF37]/20">
-                    <p className="text-xs text-[#D4AF37]/70 mb-1 font-semibold">الزبون المختار:</p>
+                  <div className="bg-black rounded-2xl p-3 border border-[#D4AF37]/20">
+                    <p className="text-[10px] text-[#D4AF37]/70 mb-1 font-bold">الزبون المختار:</p>
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-bold text-[#EDE0D4]">
                         {customers.find(c => c.phone === selectedPhone)?.name}
                       </span>
-                      <span className="text-xs font-mono bg-[#2B1B12] text-[#D4AF37] px-2 py-0.5 rounded-md border border-[#D4AF37]/20">
+                      <span className="text-xs font-mono bg-[#161616] text-[#D4AF37] px-2.5 py-1 rounded-md border border-[#D4AF37]/25">
                         {selectedPhone}
                       </span>
                     </div>
@@ -259,13 +259,13 @@ export default function CashierPanel({ customers, onAddPoints, onClose }: Cashie
 
                   {/* Quick Add Buttons */}
                   <div>
-                    <label className="text-xs font-bold text-[#EDE0D4]/80 block mb-2">إضافة أكواب سريعة:</label>
+                    <label className="text-[11px] font-bold text-[#EDE0D4]/80 block mb-2">إضافة أكواب سريعة:</label>
                     <div className="grid grid-cols-4 gap-2">
                       {[1, 2, 5, 10].map((amt) => (
                         <button
                           key={amt}
                           onClick={() => triggerAddPoints(selectedPhone, amt)}
-                          className="bg-[#1A0F0A] hover:bg-[#D4AF37] hover:text-[#1A0F0A] border border-[#D4AF37]/20 rounded-xl py-2.5 text-xs font-bold font-mono transition-all active:scale-95 shadow-xs text-[#EDE0D4] flex flex-col items-center justify-center"
+                          className="bg-black hover:bg-gradient-to-r hover:from-[#B89742] hover:to-[#F5E2A8] hover:text-stone-950 border border-[#D4AF37]/20 hover:border-transparent rounded-xl py-2.5 text-xs font-bold font-mono transition-all active:scale-95 shadow-sm text-[#EDE0D4] flex flex-col items-center justify-center cursor-pointer"
                         >
                           <span className="text-sm font-black">+{amt}</span>
                           <span className="text-[9px] font-normal opacity-85">{amt === 1 ? 'كوب' : amt === 2 ? 'كوبين' : 'أكواب'}</span>
@@ -278,13 +278,13 @@ export default function CashierPanel({ customers, onAddPoints, onClose }: Cashie
                   <div className="space-y-4">
                     {/* Custom Add Amount */}
                     <div>
-                      <label className="text-xs font-bold text-[#EDE0D4]/80 block mb-1.5">إضافة كمية مخصصة:</label>
+                      <label className="text-[11px] font-bold text-[#EDE0D4]/80 block mb-1.5">إضافة كمية مخصصة:</label>
                       <div className="flex gap-2 max-w-[200px]">
                         <input
                           type="number"
                           value={customAmount}
                           onChange={(e) => setCustomAmount(e.target.value)}
-                          className="w-full bg-[#1A0F0A] border border-[#D4AF37]/20 rounded-xl px-3 py-2 text-center text-xs font-bold font-mono text-[#EDE0D4] focus:outline-hidden focus:border-[#D4AF37]"
+                          className="w-full bg-black border border-[#D4AF37]/20 rounded-xl px-3 py-2 text-center text-xs font-bold font-mono text-[#EDE0D4] focus:outline-hidden focus:border-[#D4AF37]"
                           min="1"
                         />
                         <button
@@ -292,7 +292,7 @@ export default function CashierPanel({ customers, onAddPoints, onClose }: Cashie
                             const amt = parseInt(customAmount) || 1;
                             triggerAddPoints(selectedPhone, amt);
                           }}
-                          className="bg-[#D4AF37] hover:bg-[#dfb841] text-[#1A0F0A] rounded-xl px-4 py-2 text-xs font-bold flex items-center justify-center gap-1 shrink-0"
+                          className="bg-gradient-to-r from-[#B89742] via-[#F5E2A8] to-[#B89742] text-stone-950 rounded-xl px-4 py-2 text-xs font-bold flex items-center justify-center gap-1 shrink-0 cursor-pointer active:scale-95"
                         >
                           <Plus className="w-3.5 h-3.5 stroke-[3]" />
                           <span>إضافة</span>
@@ -301,8 +301,8 @@ export default function CashierPanel({ customers, onAddPoints, onClose }: Cashie
                     </div>
 
                     {/* Redeem Rewards Options */}
-                    <div className="pt-3 border-t border-[#D4AF37]/10">
-                      <label className="text-xs font-bold text-[#EDE0D4]/80 block mb-2">استبدال المكافآت (أكواب مجانية):</label>
+                    <div className="pt-3.5 border-t border-[#D4AF37]/15">
+                      <label className="text-[11px] font-bold text-[#EDE0D4]/80 block mb-2">استبدال المكافآت (أكواب مجانية):</label>
                       <div className="grid grid-cols-2 gap-2">
                         {[
                           { pts: 10, label: 'كوب واحد مجاناً', desc: '10 نقاط' },
@@ -319,11 +319,9 @@ export default function CashierPanel({ customers, onAddPoints, onClose }: Cashie
                               onClick={() => {
                                 if (canRedeem) {
                                   triggerAddPoints(selectedPhone, -reward.pts);
-                                } else {
-                                  alert(`عذراً، الزبون لا يملك ${reward.pts} نقاط لاستبدال هذه المكافأة.`);
                                 }
                               }}
-                              className="bg-[#1A0F0A] border border-[#D4AF37]/20 disabled:border-stone-800 disabled:opacity-40 hover:bg-gradient-to-r hover:from-[#d4af37] hover:to-[#dfb841] hover:text-stone-950 text-[#EDE0D4] rounded-xl p-2 text-right flex flex-col justify-between h-[56px] transition-all active:scale-95 cursor-pointer disabled:cursor-not-allowed"
+                              className="bg-black border border-[#D4AF37]/20 disabled:border-stone-900 disabled:opacity-30 hover:bg-gradient-to-r hover:from-[#B89742] hover:to-[#F5E2A8] hover:text-stone-950 text-[#EDE0D4] rounded-xl p-2.5 text-right flex flex-col justify-between h-[60px] transition-all active:scale-95 cursor-pointer disabled:cursor-not-allowed"
                             >
                               <span className="text-[10px] font-bold block">{reward.label}</span>
                               <span className="text-[9px] font-mono opacity-70 block">-{reward.desc}</span>
@@ -336,8 +334,8 @@ export default function CashierPanel({ customers, onAddPoints, onClose }: Cashie
                 </div>
               ) : (
                 <div className="py-12 text-center border-2 border-dashed border-[#D4AF37]/20 rounded-2xl flex flex-col items-center justify-center gap-2">
-                  <Phone className="w-8 h-8 text-stone-600" />
-                  <p className="text-xs font-semibold text-stone-400">الرجاء تحديد زبون من القائمة أعلاه لإضافة النقاط له.</p>
+                  <Phone className="w-8 h-8 text-[#D4AF37]/30" />
+                  <p className="text-xs font-semibold text-stone-500">الرجاء تحديد زبون من القائمة أعلاه لإضافة النقاط له.</p>
                 </div>
               )}
             </div>
@@ -348,7 +346,7 @@ export default function CashierPanel({ customers, onAddPoints, onClose }: Cashie
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl p-2.5 text-xs text-center font-bold flex items-center justify-center gap-1.5"
+                  className="bg-emerald-950/40 border border-emerald-500/30 text-emerald-400 rounded-xl p-2.5 text-xs text-center font-bold flex items-center justify-center gap-1.5 shadow-md"
                 >
                   <Sparkles className="w-4 h-4 text-emerald-400" />
                   <span>{successMsg}</span>
@@ -361,9 +359,9 @@ export default function CashierPanel({ customers, onAddPoints, onClose }: Cashie
               <span>الكاشير نشط</span>
               <button
                 onClick={() => setIsAuthenticated(false)}
-                className="text-[#D4AF37] hover:underline font-bold"
+                className="text-[#D4AF37] hover:underline font-bold cursor-pointer"
               >
-                قفل اللوحة
+                قفل لوحة الكاشير
               </button>
             </div>
           </motion.div>

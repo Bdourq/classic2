@@ -57,30 +57,30 @@ export default function LaunchPostModal({ isOpen, onClose }: LaunchPostModalProp
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="bg-[#2B1B12] text-[#EDE0D4] rounded-3xl border border-[#D4AF37]/30 shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[85vh]"
+            className="bg-[#0D0D0D]/95 text-[#EDE0D4] rounded-3xl border border-[#D4AF37]/30 shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[85vh] luxury-gold-border backdrop-blur-md"
           >
             {/* Header */}
-            <div className="flex justify-between items-center px-6 py-4 border-b border-[#D4AF37]/20 bg-[#1A0F0A]">
-              <div className="flex items-center gap-2">
-                <div className="p-2 bg-[#d4af37]/10 text-[#d4af37] rounded-xl">
+            <div className="flex justify-between items-center px-6 py-4 border-b border-[#D4AF37]/20 bg-black">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-[#d4af37]/10 text-[#d4af37] rounded-xl border border-[#d4af37]/25">
                   <FileText className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-base text-[#EDE0D4]">منشور الإطلاق الاحترافي</h3>
-                  <p className="text-[10px] text-[#EDE0D4]/60">جاهز للنسخ والنشر على LinkedIn أو منصات التواصل</p>
+                  <h3 className="font-serif font-black text-base text-gold-gradient">منشور الإطلاق الاحترافي</h3>
+                  <p className="text-[10px] text-stone-400 font-semibold">جاهز للنسخ والنشر على LinkedIn أو منصات التواصل</p>
                 </div>
               </div>
               <button
                 onClick={onClose}
-                className="p-1.5 rounded-full hover:bg-[#2B1B12] transition-colors"
+                className="p-1.5 rounded-full hover:bg-black text-stone-400 hover:text-[#D4AF37] border border-transparent hover:border-[#D4AF37]/20 transition-all active:scale-95"
               >
-                <X className="w-5 h-5 text-stone-400" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Text Area Content */}
             <div className="p-6 overflow-y-auto flex-1 space-y-4">
-              <div className="bg-[#1A0F0A] rounded-2xl p-3 border border-[#D4AF37]/20 flex items-center gap-2.5">
+              <div className="bg-black rounded-2xl p-3 border border-[#D4AF37]/20 flex items-center gap-2.5">
                 <Sparkles className="w-4 h-4 text-[#d4af37] shrink-0" />
                 <p className="text-xs text-[#EDE0D4]/90 leading-relaxed">
                   تمت صياغة هذا المنشور بنبرة فخر وإبداع تليق بمنتجك التقني الجديد لجذب انتباه أصحاب المقاهي والمستثمرين والزبائن.
@@ -88,27 +88,27 @@ export default function LaunchPostModal({ isOpen, onClose }: LaunchPostModalProp
               </div>
 
               <div className="relative">
-                <pre className="bg-[#1A0F0A] border border-[#D4AF37]/30 rounded-2xl p-4 text-xs font-sans text-[#EDE0D4]/90 whitespace-pre-wrap leading-relaxed max-h-[350px] overflow-y-auto select-all selection:bg-[#d4af37]/20 select-text">
+                <pre className="bg-black border border-[#D4AF37]/30 rounded-2xl p-4 text-xs font-sans text-[#EDE0D4]/90 whitespace-pre-wrap leading-relaxed max-h-[350px] overflow-y-auto select-all selection:bg-[#d4af37]/20 select-text">
                   {postText}
                 </pre>
                 
                 {/* Micro shadow bottom gradient */}
-                <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-[#1A0F0A] to-transparent rounded-b-2xl pointer-events-none" />
+                <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-black to-transparent rounded-b-2xl pointer-events-none" />
               </div>
             </div>
 
             {/* Actions Footer */}
-            <div className="px-6 py-4 border-t border-[#D4AF37]/20 bg-[#1A0F0A] flex flex-col sm:flex-row justify-between items-center gap-3">
+            <div className="px-6 py-4 border-t border-[#D4AF37]/20 bg-black flex flex-col sm:flex-row justify-between items-center gap-3">
               <span className="text-xs text-stone-500">انشر إبداعك والفت انتباه عملائك الآن ✨</span>
               <div className="flex gap-2 w-full sm:w-auto">
                 <button
                   onClick={handleCopy}
-                  className="flex-1 sm:flex-initial bg-[#D4AF37] hover:bg-[#dfb841] text-[#1A0F0A] rounded-xl py-2.5 px-6 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md active:scale-95"
+                  className="flex-1 sm:flex-initial bg-gradient-to-r from-[#B89742] via-[#F5E2A8] to-[#B89742] text-stone-950 rounded-xl py-2.5 px-6 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 cursor-pointer"
                 >
                   {copied ? (
                     <>
-                      <Check className="w-4 h-4 text-[#1A0F0A]" />
-                      <span className="text-[#1A0F0A]">تم نسخ المنشور!</span>
+                      <Check className="w-4 h-4 text-stone-950" />
+                      <span className="text-stone-950">تم نسخ المنشور!</span>
                     </>
                   ) : (
                     <>
@@ -119,7 +119,7 @@ export default function LaunchPostModal({ isOpen, onClose }: LaunchPostModalProp
                 </button>
                 <button
                   onClick={onClose}
-                  className="bg-[#2B1B12] hover:bg-[#1A0F0A] text-stone-300 border border-[#D4AF37]/20 rounded-xl py-2.5 px-4 font-bold text-xs transition-colors"
+                  className="bg-black hover:bg-[#121212] text-stone-300 border border-[#D4AF37]/20 rounded-xl py-2.5 px-4 font-bold text-xs transition-colors cursor-pointer active:scale-95"
                 >
                   إغلاق
                 </button>
