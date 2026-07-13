@@ -26,11 +26,22 @@ export async function createCustomer(phone: string): Promise<Customer> {
 
 export async function getAllCustomers(): Promise<Customer[]> {
   const { data, error } = await supabase
-    .from('customers')
+    .from('customers_with_activity')
     .select('*')
     .order('created_at', { ascending: false });
   if (error) throw error;
-  return (data ?? []).map((r) => ({ phone: r.phone, points: r.points, createdAt: r.created_at }));
+  return (data ?? []).map((r) => ({
+    phone: r.phone,
+    points: r.points,
+    createdAt: r.created_at,
+    lastAddAt: r.last_add_at,
+  }));
+}
+
+/** يحذف عميلاً — الدالة في قاعدة البيانات ترفض الحذف إذا أُضيفت له نقاط أو انضم خلال آخر 30 يوماً */
+export async function deleteCustomer(phone: string): Promise<void> {
+  const { error } = await supabase.rpc('delete_customer', { p_phone: phone });
+  if (error) throw error;
 }
 
 // ─── النقاط ────────────────────────────────────────────────

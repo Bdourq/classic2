@@ -1,11 +1,18 @@
 import { useState, useCallback, useEffect, FormEvent } from 'react';
-import { findCustomer, addPoint, redeemCoffee, getAllCustomers } from '../lib/db';
+import { findCustomer, addPoint, redeemCoffee, getAllCustomers, deleteCustomer } from '../lib/db';
 import { Customer } from '../types';
 import QRScanner from '../components/QRScanner';
 import Header from '../components/Header';
 
 const PIN: string = import.meta.env.VITE_CASHIER_PIN ?? '';
 const REDEEM_GOAL = 7;
+const INACTIVE_DAYS = 30;
+
+/** عدد الأيام منذ آخر إضافة نقاط (أو الانضمام إن لم تُضف نقاط بعد) */
+function daysSince(iso: string): number {
+  const ms = Date.now() - new Date(iso).getTime();
+  return Math.floor(ms / (1000 * 60 * 60 * 24));
+}
 
 type State = 'pin' | 'idle' | 'scanning' | 'awaiting-amount' | 'result';
 
@@ -55,6 +62,11 @@ export default function AdminPage() {
   const [listError, setListError]           = useState('');
   const [search, setSearch]                 = useState('');
   const [showList, setShowList]             = useState(false);
+
+  // حذف عميل غير نشط
+  const [confirmDelete, setConfirmDelete]   = useState<string | null>(null);
+  const [deletingPhone, setDeletingPhone]   = useState<string | null>(null);
+  const [deleteError, setDeleteError]       = useState('');
 
   /* ── جلب قائمة العملاء عند فتح القسم ─────────────────── */
   async function loadAllCustomers() {
@@ -178,6 +190,20 @@ export default function AdminPage() {
     } catch (e: any) {
       setLookupError(e?.message ?? 'خطأ أثناء الاستعلام');
     } finally { setLookupLoading(false); }
+  }
+
+  /* ── حذف عميل غير نشط (لم تُضف له نقاط خلال 30 يوماً) ── */
+  async function handleDeleteCustomer(phone: string) {
+    setDeletingPhone(phone); setDeleteError('');
+    try {
+      await deleteCustomer(phone);
+      setAllCustomers(prev => prev.filter(c => c.phone !== phone));
+      setConfirmDelete(null);
+    } catch (e: any) {
+      setDeleteError(e?.message ?? 'تعذّر حذف العميل');
+    } finally {
+      setDeletingPhone(null);
+    }
   }
 
   /* ── استبدال قهوة من لوحة الكاشير ────────────────────── */
@@ -582,6 +608,9 @@ export default function AdminPage() {
               {listError && (
                 <p style={{ color: '#E57373', fontSize: '0.85rem', textAlign: 'center', margin: '0.5rem 0' }}>{listError}</p>
               )}
+              {deleteError && (
+                <p style={{ color: '#E57373', fontSize: '0.85rem', textAlign: 'center', margin: '0.5rem 0' }}>{deleteError}</p>
+              )}
 
               {listLoading && !allCustomers.length ? (
                 <div style={{ textAlign: 'center', padding: '1rem 0' }}>
@@ -601,32 +630,96 @@ export default function AdminPage() {
                       {filtered.length} {filtered.length === 1 ? 'عميل' : 'عملاء'}
                       {search ? ` — نتائج البحث` : ' إجمالاً'}
                     </p>
-                    <div style={{ maxHeight: '340px', overflowY: 'auto', marginInline: '-0.25rem' }}>
-                      {filtered.map((c, i) => (
-                        <div key={c.phone} style={{
-                          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                          padding: '0.6rem 0.25rem',
-                          borderBottom: i < filtered.length - 1 ? '1px solid rgba(201,164,60,0.1)' : 'none',
-                        }}>
-                          <div>
-                            <span style={{ fontSize: '0.88rem', color: 'var(--text-primary)', direction: 'ltr', display: 'block' }}>
-                              {c.phone}
-                            </span>
-                            <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)' }}>
-                              {new Date(c.createdAt).toLocaleDateString('ar-JO', { day: 'numeric', month: 'short', year: 'numeric' })}
-                            </span>
-                          </div>
-                          <span style={{
-                            fontWeight: 800, fontSize: '0.92rem',
-                            color: c.points > 0 ? 'var(--gold-300)' : 'var(--text-dim)',
-                            background: 'rgba(201,164,60,0.08)',
-                            border: '1px solid rgba(201,164,60,0.2)',
-                            borderRadius: '0.5rem', padding: '0.2rem 0.6rem',
+                    <div style={{ maxHeight: '380px', overflowY: 'auto', marginInline: '-0.25rem' }}>
+                      {filtered.map((c, i) => {
+                        const inactiveDays = daysSince(c.lastAddAt ?? c.createdAt);
+                        const isInactive   = inactiveDays >= INACTIVE_DAYS;
+                        const isConfirming = confirmDelete === c.phone;
+                        const isDeleting   = deletingPhone === c.phone;
+                        return (
+                          <div key={c.phone} style={{
+                            padding: '0.6rem 0.25rem',
+                            borderBottom: i < filtered.length - 1 ? '1px solid rgba(201,164,60,0.1)' : 'none',
                           }}>
-                            {c.points} نقطة
-                          </span>
-                        </div>
-                      ))}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <div>
+                                <span style={{ fontSize: '0.88rem', color: 'var(--text-primary)', direction: 'ltr', display: 'block' }}>
+                                  {c.phone}
+                                </span>
+                                <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)' }}>
+                                  {new Date(c.createdAt).toLocaleDateString('ar-JO', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                  {isInactive && (
+                                    <span style={{ color: '#E5A05C', marginRight: '0.4rem', marginLeft: '0.4rem' }}>
+                                      · غير نشط منذ {inactiveDays} يوم
+                                    </span>
+                                  )}
+                                </span>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <span style={{
+                                  fontWeight: 800, fontSize: '0.92rem',
+                                  color: c.points > 0 ? 'var(--gold-300)' : 'var(--text-dim)',
+                                  background: 'rgba(201,164,60,0.08)',
+                                  border: '1px solid rgba(201,164,60,0.2)',
+                                  borderRadius: '0.5rem', padding: '0.2rem 0.6rem',
+                                }}>
+                                  {c.points} نقطة
+                                </span>
+                                {isInactive && !isConfirming && (
+                                  <button
+                                    onClick={() => { setConfirmDelete(c.phone); setDeleteError(''); }}
+                                    title="حذف العميل (غير نشط منذ أكثر من 30 يوماً)"
+                                    style={{
+                                      background: 'rgba(229,115,115,0.1)', border: '1px solid rgba(229,115,115,0.3)',
+                                      color: '#E57373', borderRadius: '0.5rem', padding: '0.25rem 0.5rem',
+                                      fontSize: '0.8rem', cursor: 'pointer', flexShrink: 0,
+                                    }}
+                                  >
+                                    🗑️
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+
+                            {isConfirming && (
+                              <div style={{
+                                marginTop: '0.5rem', padding: '0.6rem 0.75rem',
+                                background: 'rgba(229,115,115,0.08)', border: '1px solid rgba(229,115,115,0.3)',
+                                borderRadius: '0.6rem', display: 'flex', alignItems: 'center',
+                                justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap',
+                              }}>
+                                <span style={{ fontSize: '0.78rem', color: '#E57373' }}>
+                                  حذف هذا العميل نهائياً؟ لا يمكن التراجع
+                                </span>
+                                <div style={{ display: 'flex', gap: '0.4rem', flexShrink: 0 }}>
+                                  <button
+                                    onClick={() => handleDeleteCustomer(c.phone)}
+                                    disabled={isDeleting}
+                                    style={{
+                                      background: '#E57373', border: 'none', color: '#1a0e0e',
+                                      borderRadius: '0.45rem', padding: '0.3rem 0.7rem',
+                                      fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer',
+                                    }}
+                                  >
+                                    {isDeleting ? '...' : 'تأكيد الحذف'}
+                                  </button>
+                                  <button
+                                    onClick={() => setConfirmDelete(null)}
+                                    disabled={isDeleting}
+                                    style={{
+                                      background: 'transparent', border: '1px solid var(--border)',
+                                      color: 'var(--text-muted)', borderRadius: '0.45rem', padding: '0.3rem 0.7rem',
+                                      fontSize: '0.78rem', cursor: 'pointer',
+                                    }}
+                                  >
+                                    إلغاء
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </>
                 );

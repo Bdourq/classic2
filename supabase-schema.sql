@@ -58,7 +58,43 @@ begin
 end;
 $$;
 
--- 6) أمان مستوى الصف (RLS)
+-- 5) عرض العملاء مع تاريخ آخر إضافة نقاط (أو تاريخ الانضمام إن لم تُضف له نقاط)
+create or replace view customers_with_activity as
+select
+  c.phone, c.points, c.created_at,
+  coalesce(
+    (select max(pl.created_at) from points_log pl where pl.phone = c.phone and pl.action = 'add'),
+    c.created_at
+  ) as last_add_at
+from customers c;
+
+grant select on customers_with_activity to anon, authenticated;
+
+-- 6) دالة حذف عميل — تسمح فقط إذا لم تُضف له نقاط (أو لم ينضم) خلال آخر 30 يوماً
+create or replace function delete_customer(p_phone text)
+returns void language plpgsql security definer as
+$
+declare
+  last_ref timestamptz;
+begin
+  select coalesce(
+    (select max(created_at) from points_log where phone = p_phone and action = 'add'),
+    (select created_at from customers where phone = p_phone)
+  ) into last_ref;
+
+  if last_ref is null then
+    raise exception 'العميل غير موجود: %', p_phone;
+  end if;
+
+  if last_ref > now() - interval '30 days' then
+    raise exception 'لا يمكن حذف عميل أُضيفت له نقاط أو انضم خلال آخر 30 يوماً';
+  end if;
+
+  delete from customers where phone = p_phone;
+end;
+$;
+
+-- 7) أمان مستوى الصف (RLS)
 alter table customers enable row level security;
 alter table points_log enable row level security;
 
@@ -73,6 +109,6 @@ create policy "insert_customers" on customers for insert with check (true);
 drop policy if exists "read_points_log" on points_log;
 create policy "read_points_log" on points_log for select using (true);
 
--- 7) البث اللحظي
+-- 8) البث اللحظي
 alter publication supabase_realtime add table customers;
 alter publication supabase_realtime add table points_log;
