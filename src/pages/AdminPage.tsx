@@ -15,6 +15,10 @@ interface ScanResult {
   message: string;
 }
 
+function cleanPhone(raw: string): string {
+  return raw.replace(/\s+/g, '').trim();
+}
+
 function extractPhone(text: string): string {
   try {
     const url = new URL(text);
@@ -30,6 +34,7 @@ export default function AdminPage() {
   const [pinError, setPinError] = useState('');
   const [result, setResult]     = useState<ScanResult | null>(null);
   const [processing, setProcessing] = useState(false);
+  const [manualPhone, setManualPhone] = useState('');
 
   function handlePin(e: FormEvent) {
     e.preventDefault();
@@ -53,9 +58,26 @@ export default function AdminPage() {
       const updated = await findCustomer(phone);
       setResult({ phone, customer: updated!, success: true, message: `✓ نقطة أُضيفت — الرصيد: ${updated!.points}` });
     } catch (err: any) {
-      setResult({ phone, customer: { phone, points: 0, createdAt: '' }, success: false, message: err?.message ?? 'خطأ غير متوقع' });
+      const msg = err?.message ?? 'خطأ غير متوقع';
+      const isPinError = msg.toLowerCase().includes('pin') || msg.toLowerCase().includes('unauthorized');
+      setResult({
+        phone,
+        customer: { phone, points: 0, createdAt: '' },
+        success: false,
+        message: isPinError
+          ? 'فشل التحقق من رمز الكاشير — تأكد أن VITE_CASHIER_PIN مضبوط بنفس قيمة cashier_pin في Supabase'
+          : msg,
+      });
     } finally { setProcessing(false); }
   }, []);
+
+  function handleManualAdd(e: FormEvent) {
+    e.preventDefault();
+    const phone = cleanPhone(manualPhone);
+    if (!phone) return;
+    setManualPhone('');
+    handleScan(phone);
+  }
 
   /* ── شاشة PIN ───────────────────────── */
   if (state === 'pin') return (
@@ -122,25 +144,56 @@ export default function AdminPage() {
         }
       />
 
-      {/* بطاقة المسح */}
-      <div className="cc-card anim-in" style={{ width: '100%', maxWidth: '440px', marginTop: '1.25rem', padding: '2rem', textAlign: 'center' }}>
-        <p style={{ margin: '0 0 0.2rem', fontSize: '0.85rem', color: 'var(--text-muted)', letterSpacing: '1.5px' }}>
+      {/* بطاقة الكاشير */}
+      <div className="cc-card anim-in" style={{ width: '100%', maxWidth: '440px', marginTop: '1.25rem', padding: '2rem' }}>
+        <p style={{ margin: '0 0 0.2rem', fontSize: '0.85rem', color: 'var(--text-muted)', letterSpacing: '1.5px', textAlign: 'center' }}>
           CLASSIC CAFE — CASHIER
         </p>
 
         <div className="cc-divider" style={{ margin: '0.85rem auto 1.5rem' }} />
 
-        <p style={{ margin: '0 0 1.75rem', fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-          امسح رمز QR العميل
+        {/* إدخال رقم الهاتف يدوياً */}
+        <p style={{ margin: '0 0 0.75rem', fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+          إضافة نقطة برقم الهاتف
+        </p>
+        <form onSubmit={handleManualAdd} style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
+          <input
+            className="cc-input"
+            type="tel"
+            inputMode="numeric"
+            placeholder="07xxxxxxxx"
+            value={manualPhone}
+            onChange={(e) => setManualPhone(e.target.value)}
+            style={{ flex: 1, marginBottom: 0, direction: 'ltr', textAlign: 'left' }}
+          />
+          <button
+            className="cc-btn-gold"
+            type="submit"
+            style={{ padding: '0 1.25rem', whiteSpace: 'nowrap', flexShrink: 0 }}
+            disabled={!manualPhone.trim()}
+          >
+            إضافة ✓
+          </button>
+        </form>
+
+        {/* فاصل */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
+          <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+          <span style={{ fontSize: '0.78rem', color: 'var(--text-dim)' }}>أو</span>
+          <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+        </div>
+
+        <p style={{ margin: '0 0 1rem', fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-primary)', textAlign: 'center' }}>
+          مسح رمز QR
           <br />
-          <span style={{ fontSize: '0.85rem', fontWeight: 400, color: 'var(--text-muted)' }}>
+          <span style={{ fontSize: '0.82rem', fontWeight: 400, color: 'var(--text-muted)' }}>
             تُضاف نقطة واحدة تلقائياً
           </span>
         </p>
 
         <button
           className="cc-btn-gold"
-          style={{ fontSize: '1.15rem', padding: '1.1rem', maxWidth: 280, margin: '0 auto' }}
+          style={{ fontSize: '1.1rem', padding: '1rem', maxWidth: 280, margin: '0 auto' }}
           onClick={() => { setState('scanning'); setResult(null); }}
         >
           📷 مسح QR
