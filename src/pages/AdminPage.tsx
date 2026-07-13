@@ -239,7 +239,7 @@ export default function AdminPage() {
       <img src="/logo.jpg" alt="Classic Cafe" className="cc-logo" style={{ marginBottom: '1.5rem' }} />
 
       <div className="cc-card anim-in" style={{ width: '100%', maxWidth: '320px', padding: '2rem' }}>
-        <p style={{ margin: '0 0 0.25rem', fontSize: '1.15rem', fontWeight: 800, textAlign: 'center', color: 'var(--text-primary)' }}>
+        <p className="cc-title" style={{ margin: '0 0 0.25rem', fontSize: '1.3rem', textAlign: 'center' }}>
           لوحة الكاشير
         </p>
         <p style={{ margin: '0 0 1.75rem', fontSize: '0.88rem', color: 'var(--text-muted)', textAlign: 'center' }}>
@@ -294,8 +294,8 @@ export default function AdminPage() {
       {/* ── بطاقة الإضافة اليدوية ─────────────────────── */}
       {state === 'idle' && (
         <div className="cc-card anim-in" style={{ width: '100%', maxWidth: '440px', marginTop: '1.25rem', padding: '2rem' }}>
-          <p style={{ margin: '0 0 0.15rem', fontSize: '0.85rem', color: 'var(--text-muted)', letterSpacing: '1.5px', textAlign: 'center' }}>
-            CLASSIC CAFE — CASHIER
+          <p style={{ margin: '0 0 0.15rem', fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'center' }}>
+            <span className="cc-eyebrow" style={{ color: 'var(--gold-400)' }}>CLASSIC CAFE — CASHIER</span>
           </p>
 
           <div className="cc-divider" style={{ margin: '0.85rem auto 1.75rem' }} />

@@ -189,6 +189,48 @@ input:focus-visible {
   background-clip: text;
 }
 
+/* ── Typography: brand headings & eyebrows ─── */
+.cc-title {
+  font-family: 'El Messiri', 'Cairo', sans-serif;
+  font-weight: 700;
+  background: var(--gold-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.cc-eyebrow {
+  font-family: 'Cinzel', 'Cairo', sans-serif;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+}
+
+/* ── Full-width hero banner (logo + title) ─── */
+.cc-hero-banner {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 2.5rem 1.5rem 2rem;
+  position: relative;
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 0%, rgba(201,164,60,0.16) 0%, transparent 65%),
+    linear-gradient(180deg, var(--dark-800) 0%, var(--dark-900) 100%);
+  border-bottom: 1px solid var(--border-gold);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.45);
+  overflow: hidden;
+}
+.cc-hero-banner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 0%, var(--gold-500) 50%, transparent 100%);
+  opacity: 0.35;
+  height: 1px;
+  top: 0;
+}
+
 /* ── Logo badge ───────────────────────── */
 .cc-logo {
   width: 110px;

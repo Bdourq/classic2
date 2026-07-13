@@ -63,21 +63,17 @@ function formatActivityTime(iso: string): string {
   return `${d.toLocaleDateString('ar-JO', { day: 'numeric', month: 'short' })} ${time}`;
 }
 
-/* ─── الهيدر الثابت أعلى الصفحة: لوجو + عنوان "نقاطي" ──── */
+/* ─── الهيدر الثابت أعلى الصفحة: بانر بعرض الصفحة الكامل بلوجو + عنوان "نقاطي" ──── */
 function Hero() {
   return (
-    <div className="anim-in" style={{ textAlign: 'center', margin: '2rem 0 1.5rem' }}>
-      <img src="/logo.jpg" alt="Classic Cafe" className="cc-logo" style={{ marginBottom: '1rem' }} />
-      <h1 style={{
-        margin: '0 0 0.15rem',
-        fontFamily: "'Cinzel', serif",
-        fontSize: '1.6rem', fontWeight: 700, letterSpacing: '2px',
-        color: 'var(--text-primary)',
-      }}>
+    <div className="cc-hero-banner anim-in">
+      <img src="/logo.jpg" alt="Classic Cafe" className="cc-logo" style={{ marginBottom: '1.1rem' }} />
+      <h1 className="cc-title" style={{ margin: '0 0 0.3rem', fontSize: '1.9rem' }}>
         نقاطي
       </h1>
-      <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)', letterSpacing: '1px' }}>
-        CLASSIC CAFE — نظام الولاء
+      <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+        <span className="cc-eyebrow" style={{ color: 'var(--gold-400)' }}>CLASSIC CAFE</span>
+        {' — نظام الولاء'}
       </p>
     </div>
   );
@@ -210,6 +206,11 @@ export default function CustomerPage() {
     minHeight: '100dvh',
     background: 'radial-gradient(ellipse 80% 50% at 50% 0%, rgba(201,164,60,0.09) 0%, transparent 60%), var(--dark-900)',
     display: 'flex', flexDirection: 'column', alignItems: 'center',
+  };
+
+  const contentStyle: CSSProperties = {
+    width: '100%',
+    display: 'flex', flexDirection: 'column', alignItems: 'center',
     padding: '0 1.25rem 2.5rem',
   };
 
@@ -217,6 +218,7 @@ export default function CustomerPage() {
   if (stage === 'need-phone') return (
     <div style={pageStyle}>
       <Hero />
+      <div style={contentStyle}>
       <div className="cc-card anim-in" style={{ width: '100%', maxWidth: '380px', padding: '2rem' }}>
         <p style={{ margin: '0 0 0.35rem', fontSize: '1.15rem', fontWeight: 800, textAlign: 'center', color: 'var(--text-primary)' }}>
           أهلاً بك
@@ -255,6 +257,7 @@ export default function CustomerPage() {
           إذا لم يكن لديك حساب، سيُنشأ تلقائياً
         </p>
       </div>
+      </div>
     </div>
   );
 
@@ -279,6 +282,7 @@ export default function CustomerPage() {
   return (
     <div style={pageStyle}>
       <Hero />
+      <div style={contentStyle}>
 
       {/* بطاقة الرصيد */}
       <div
@@ -389,6 +393,7 @@ export default function CustomerPage() {
 
       <div style={{ display: 'flex', gap: '1.25rem', marginTop: '1.5rem' }}>
         <button className="cc-btn-ghost" onClick={changeNumber}>🔄 تغيير رقم الهاتف</button>
+      </div>
       </div>
     </div>
   );
