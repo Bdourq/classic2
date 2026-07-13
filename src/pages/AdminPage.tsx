@@ -165,7 +165,7 @@ export default function AdminPage() {
     if (!lookupCustomer || lookupCustomer.points < REDEEM_GOAL) return;
     setRedeeming(true); setRedeemMsg('');
     try {
-      await redeemCoffee(lookupCustomer.phone);
+      await redeemCoffee(lookupCustomer.phone, REDEEM_GOAL);
       const updated = await findCustomer(lookupCustomer.phone);
       setLookupCustomer(updated);
       setRedeemMsg('✅ تم الاستبدال — خُصمت 7 نقاط بنجاح');

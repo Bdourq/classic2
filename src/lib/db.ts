@@ -38,9 +38,9 @@ export async function addPointsCustomer(phone: string, amount: number): Promise<
   if (error) throw error;
 }
 
-/** يخصم 7 نقاط مقابل قهوة مجانية */
-export async function redeemCoffee(phone: string): Promise<void> {
-  const { error } = await supabase.rpc('redeem_coffee', { p_phone: phone });
+/** يخصم عدداً مخصصاً من النقاط مقابل الاستبدال */
+export async function redeemCoffee(phone: string, amount: number): Promise<void> {
+  const { error } = await supabase.rpc('redeem_coffee', { p_phone: phone, p_amount: amount });
   if (error) throw error;
 }
 

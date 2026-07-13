@@ -2,17 +2,14 @@ import { useEffect, useState, useCallback, CSSProperties } from 'react';
 import { findCustomer, createCustomer, redeemCoffee, getPointsLog, subscribeToCustomer } from '../lib/db';
 import { Customer, PointsLog } from '../types';
 
-const GOAL = 7;
 const STORAGE_KEY = 'cc_phone';
 
-/* ─── دائرة التقدّم — النقاط الحالية من 10 ─────────────── */
-function ProgressCircle({ points }: { points: number }) {
+/* ─── شارة النقاط — تعرض الرصيد الكامل بدون سقف ────────── */
+function PointsBadge({ points }: { points: number }) {
   const size = 190;
   const stroke = 14;
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
-  const pct = Math.min(points, GOAL) / GOAL;
-  const offset = c * (1 - pct);
 
   return (
     <div style={{ position: 'relative', width: size, height: size, margin: '0 auto' }}>
@@ -21,8 +18,7 @@ function ProgressCircle({ points }: { points: number }) {
         <circle
           cx={size / 2} cy={size / 2} r={r} fill="none"
           stroke="url(#ccGoldRing)" strokeWidth={stroke}
-          strokeDasharray={c} strokeDashoffset={offset} strokeLinecap="round"
-          style={{ transition: 'stroke-dashoffset 0.7s ease' }}
+          strokeDasharray={c} strokeDashoffset={0} strokeLinecap="round"
         />
         <defs>
           <linearGradient id="ccGoldRing" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -37,13 +33,13 @@ function ProgressCircle({ points }: { points: number }) {
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       }}>
         <span style={{
-          fontSize: '3rem', fontWeight: 900, lineHeight: 1,
+          fontSize: points >= 100 ? '2.4rem' : '3rem', fontWeight: 900, lineHeight: 1,
           background: 'var(--gold-gradient)',
           WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
         }}>
-          {Math.min(points, GOAL)}
+          {points}
         </span>
-        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.1rem' }}>من {GOAL} نقاط ☕</span>
+        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.1rem' }}>نقطة ☕</span>
       </div>
     </div>
   );
@@ -100,8 +96,9 @@ export default function CustomerPage() {
 
   const [customer, setCustomer]   = useState<Customer | null>(null);
   const [log, setLog]             = useState<PointsLog[]>([]);
-  const [redeeming, setRedeeming] = useState(false);
-  const [redeemMsg, setRedeemMsg] = useState('');
+  const [redeeming, setRedeeming]     = useState(false);
+  const [redeemMsg, setRedeemMsg]     = useState('');
+  const [redeemAmount, setRedeemAmount] = useState('');
   const [errorMsg, setErrorMsg]   = useState('');
   const [flashNew, setFlashNew]   = useState(false);
   const [flashPoints, setFlashPoints] = useState(0);
@@ -169,12 +166,16 @@ export default function CustomerPage() {
     setStage('need-phone');
   }
 
-  async function handleRedeem() {
-    if (!customer || customer.points < GOAL) return;
+  async function handleRedeem(e: React.FormEvent) {
+    e.preventDefault();
+    const pts = Math.floor(parseFloat(redeemAmount) || 0);
+    if (!customer || pts <= 0 || pts > customer.points) return;
     setRedeeming(true); setRedeemMsg('');
     try {
-      await redeemCoffee(phone);
-      setRedeemMsg('✅ تم استبدال 7 نقاط — استمتع بقهوتك!');
+      await redeemCoffee(phone, pts);
+      const label = pts === 1 ? 'نقطة واحدة' : `${pts} نقاط`;
+      setRedeemMsg(`✅ تم استبدال ${label} بنجاح!`);
+      setRedeemAmount('');
       await loadData(phone);
     } catch (e: any) {
       setRedeemMsg('❌ ' + (e?.message ?? 'خطأ أثناء الاستبدال'));
@@ -243,8 +244,6 @@ export default function CustomerPage() {
     </div>
   );
 
-  const canRedeem = customer.points >= GOAL;
-  const remaining = Math.max(0, GOAL - customer.points);
   const last4 = customer.phone.slice(-4);
 
   /* ── الصفحة الرئيسية: النقاط + النشاطات ──────────────── */
@@ -252,6 +251,7 @@ export default function CustomerPage() {
     <div style={pageStyle}>
       <Hero />
 
+      {/* بطاقة الرصيد */}
       <div
         className={`cc-card anim-in${flashNew ? ' pulse-gold' : ''}`}
         style={{ width: '100%', maxWidth: '420px', padding: '2rem', textAlign: 'center' }}
@@ -263,14 +263,7 @@ export default function CustomerPage() {
           رقم العضوية المرتبط بهاتفك
         </p>
 
-        <ProgressCircle points={customer.points} />
-
-        <p style={{ margin: '1.25rem 0 0', fontSize: '0.95rem', color: 'var(--text-muted)' }}>
-          {canRedeem
-            ? <span style={{ color: 'var(--gold-300)', fontWeight: 700 }}>🎉 وصلت لـ {GOAL} نقاط — قهوتك المجانية جاهزة!</span>
-            : <>باقي <b style={{ color: 'var(--gold-300)' }}>{remaining}</b> {remaining === 1 ? 'نقطة' : 'نقاط'} للقهوة المجانية</>
-          }
-        </p>
+        <PointsBadge points={customer.points} />
 
         {flashNew && (
           <div style={{
@@ -281,31 +274,57 @@ export default function CustomerPage() {
             +{flashPoints} {flashPoints === 1 ? 'نقطة جديدة' : 'نقاط جديدة'}! ☕
           </div>
         )}
-
-        {redeemMsg && (
-          <div style={{
-            marginTop: '0.75rem', padding: '0.6rem 1rem',
-            background: redeemMsg.startsWith('❌') ? 'rgba(229,115,115,0.1)' : 'rgba(201,164,60,0.1)',
-            border: `1px solid ${redeemMsg.startsWith('❌') ? 'rgba(229,115,115,0.35)' : 'rgba(201,164,60,0.35)'}`,
-            borderRadius: '0.75rem',
-            color: redeemMsg.startsWith('❌') ? '#E57373' : 'var(--gold-300)',
-            fontWeight: 600, fontSize: '0.9rem',
-          }}>
-            {redeemMsg}
-          </div>
-        )}
-
-        {canRedeem && (
-          <button
-            className="cc-btn-gold"
-            onClick={handleRedeem}
-            disabled={redeeming}
-            style={{ marginTop: '1.5rem', fontSize: '1.1rem', padding: '1.05rem' }}
-          >
-            {redeeming ? <span className="spinner" style={{ borderTopColor: 'var(--dark-900)' }} /> : '🎁 استبدل الآن'}
-          </button>
-        )}
       </div>
+
+      {/* بطاقة الاستبدال */}
+      {customer.points > 0 && (
+        <div className="cc-card anim-in" style={{ width: '100%', maxWidth: '420px', marginTop: '0.85rem', padding: '1.5rem' }}>
+          <p style={{ margin: '0 0 0.25rem', fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.98rem' }}>
+            🎁 استبدال النقاط
+          </p>
+          <p style={{ margin: '0 0 1rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+            رصيدك الحالي: <b style={{ color: 'var(--gold-300)' }}>{customer.points}</b> نقطة — أدخل عدد النقاط التي تريد استبدالها
+          </p>
+
+          <form onSubmit={handleRedeem} style={{ display: 'flex', gap: '0.5rem' }}>
+            <input
+              className="cc-input"
+              type="number"
+              inputMode="numeric"
+              min="1"
+              max={customer.points}
+              placeholder={`من 1 إلى ${customer.points}`}
+              value={redeemAmount}
+              onChange={(e) => { setRedeemAmount(e.target.value); setRedeemMsg(''); }}
+              style={{ flex: 1, marginBottom: 0 }}
+            />
+            <button
+              className="cc-btn-gold"
+              type="submit"
+              disabled={redeeming || Math.floor(parseFloat(redeemAmount) || 0) <= 0 || Math.floor(parseFloat(redeemAmount) || 0) > customer.points}
+              style={{ flexShrink: 0, padding: '0 1.1rem' }}
+            >
+              {redeeming
+                ? <span className="spinner" style={{ borderTopColor: 'var(--dark-900)', width: 16, height: 16, borderWidth: 2 }} />
+                : 'استبدال'}
+            </button>
+          </form>
+
+          {redeemMsg && (
+            <div style={{
+              marginTop: '0.75rem', padding: '0.6rem 1rem',
+              background: redeemMsg.startsWith('❌') ? 'rgba(229,115,115,0.1)' : 'rgba(201,164,60,0.1)',
+              border: `1px solid ${redeemMsg.startsWith('❌') ? 'rgba(229,115,115,0.35)' : 'rgba(201,164,60,0.35)'}`,
+              borderRadius: '0.75rem',
+              color: redeemMsg.startsWith('❌') ? '#E57373' : 'var(--gold-300)',
+              fontWeight: 600, fontSize: '0.9rem',
+            }}>
+              {redeemMsg}
+            </div>
+          )}
+        </div>
+      )}
+
 
       {/* آخر النشاطات */}
       <div className="cc-card anim-in" style={{ width: '100%', maxWidth: '420px', marginTop: '0.85rem', padding: '1.5rem' }}>
