@@ -315,6 +315,16 @@ export default function CustomerPage() {
             +{flashPoints} {flashPoints === 1 ? 'نقطة جديدة أُضيفت' : 'نقاط جديدة أُضيفت'}! ☕
           </div>
         )}
+
+        {/* معادلة النقاط */}
+        <div style={{
+          marginTop: '1.1rem',
+          background: 'rgba(201,164,60,0.07)', border: '1px solid rgba(201,164,60,0.22)',
+          borderRadius: '0.85rem', padding: '0.75rem 1rem',
+          fontSize: '0.83rem', color: 'var(--gold-300)', textAlign: 'center', lineHeight: 1.7,
+        }}>
+          كل <b>دينار</b> = <b>1 نقطة</b> &nbsp;·&nbsp; كل <b>{REDEEM_GOAL} نقاط</b> = كاسة قهوة ☕
+        </div>
       </div>
 
 
