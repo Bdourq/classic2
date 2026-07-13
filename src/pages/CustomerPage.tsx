@@ -83,6 +83,47 @@ function Hero() {
   );
 }
 
+/* عدد النقاط اللازم لاستبدال قهوة مجانية — يطابق REDEEM_GOAL في لوحة الكاشير */
+const REDEEM_GOAL = 7;
+
+/* ─── عبارة تشجيعية فاخرة تتطور مع تراكم النقاط ─────────── */
+function encouragement(points: number): { title: string; subtitle?: string } {
+  if (points === 0) {
+    return {
+      title: 'أهلاً بك في عالم Classic Cafe ☕',
+      subtitle: 'كل زيارة تقرّبك خطوة من فنجانك المجاني القادم',
+    };
+  }
+
+  const cycles    = Math.floor(points / REDEEM_GOAL);
+  const remainder = points % REDEEM_GOAL;
+  const toNext    = REDEEM_GOAL - remainder;
+
+  if (remainder === 0) {
+    // بالضبط عند مضاعف الهدف — مكافأة جاهزة للاستبدال
+    return cycles === 1
+      ? { title: '🎉 وصلت لهدفك! قهوتك المجانية جاهزة', subtitle: 'اطلبها من الكاشير الآن واستمتع ☕👑' }
+      : { title: `🏆 ${cycles} مكافآت متراكمة بانتظارك`, subtitle: 'ولاؤك يُصنع منه أفضل قهوة — تفضّل بالاستبدال من الكاشير' };
+  }
+
+  if (toNext === 1) {
+    return { title: 'نقطة واحدة فقط! ✨', subtitle: 'وتصبح قهوتك المجانية جاهزة للاستبدال 🎉' };
+  }
+  if (toNext <= 3) {
+    return { title: `قريباً جداً! ${toNext} نقاط تفصلك عن قهوتك المجانية`, subtitle: 'كل رشفة تقرّبك أكثر ☕✨' };
+  }
+  if (cycles === 0) {
+    return points === 1
+      ? { title: 'بداية موفقة! نقطتك الأولى في حسابك 🌱', subtitle: 'استمر، والمكافآت الجميلة قادمة' }
+      : { title: `رائع! لديك ${points} نقاط وتتراكم بثبات 🌟`, subtitle: 'أنت على الطريق الصحيح نحو أول مكافأة' };
+  }
+
+  // بعد تحقيق مكافأة واحدة على الأقل، ولا يزال هناك تراكم إضافي
+  return cycles >= 3
+    ? { title: 'عميلنا الأغلى، ولاؤك فخرنا 💛👑', subtitle: `${points} نقطة — و${toNext} نقاط أخرى نحو مكافأتك التالية` }
+    : { title: `عميل مميز يستحق أفضل القهوة ☕🏆`, subtitle: `${points} نقطة — باقي ${toNext} نقاط للمكافأة التالية` };
+}
+
 type Stage = 'need-phone' | 'loading' | 'ready' | 'error';
 
 export default function CustomerPage() {
@@ -245,18 +286,25 @@ export default function CustomerPage() {
         <PointsBadge points={customer.points} />
 
         {/* عبارة تشجيعية */}
-        <p style={{ margin: '1.1rem 0 0', fontSize: '0.9rem', color: 'var(--text-muted)', lineHeight: 1.6 }}>
-          {customer.points === 0
-            ? 'أهلاً بك في Classic Cafe — نقاطك تبدأ من أول زيارة ☕'
-            : customer.points < 5
-            ? `رائع! لديك ${customer.points} ${customer.points === 1 ? 'نقطة' : 'نقاط'} — استمر وتراكم المكافآت 🌟`
-            : customer.points < 10
-            ? `أنت على الطريق الصحيح! ${customer.points} نقاط تنتظر مكافأتها ✨`
-            : customer.points < 20
-            ? `${customer.points} نقطة! عميل مميز يستحق أفضل القهوة ☕🏆`
-            : `${customer.points} نقطة — أنت من أكثر عملائنا وفاءً، شكراً لك 💛`
-          }
-        </p>
+        {(() => {
+          const { title, subtitle } = encouragement(customer.points);
+          return (
+            <div style={{ margin: '1.1rem 0 0' }}>
+              <p style={{
+                margin: 0, fontSize: '0.98rem', fontWeight: 800, lineHeight: 1.6,
+                background: 'var(--gold-gradient)',
+                WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
+              }}>
+                {title}
+              </p>
+              {subtitle && (
+                <p style={{ margin: '0.3rem 0 0', fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.6 }}>
+                  {subtitle}
+                </p>
+              )}
+            </div>
+          );
+        })()}
 
         {flashNew && (
           <div style={{
