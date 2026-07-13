@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "yfudSu9VE-tBcPc6ZmF5J"
+uri = "file://classic-cafe-cloudflare.zip"
+type = "unspecified"
+title = "Classic Cafe — ملف Cloudflare Pages (dist.zip)"
