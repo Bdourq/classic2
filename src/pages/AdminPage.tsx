@@ -3,6 +3,7 @@ import { findCustomer, addPoint, getAllCustomers, deleteCustomer, getPointsLog }
 import { Customer, PointsLog } from '../types';
 import QRScanner from '../components/QRScanner';
 import Header from '../components/Header';
+import BottomNav from '../components/BottomNav';
 
 const PIN: string = import.meta.env.VITE_CASHIER_PIN ?? '';
 const REDEEM_GOAL = 7;
@@ -238,11 +239,8 @@ export default function AdminPage() {
           )}
           <button className="cc-btn-gold" type="submit">دخول ←</button>
         </form>
-
-        <a href="/" style={{ display: 'block', textAlign: 'center', marginTop: '1.25rem', color: 'var(--text-dim)', fontSize: '0.82rem', textDecoration: 'none' }}>
-          ← صفحة العملاء
-        </a>
       </div>
+      <BottomNav active="cashier" />
     </div>
   );
 
@@ -254,7 +252,7 @@ export default function AdminPage() {
       minHeight: '100dvh',
       background: 'radial-gradient(ellipse 80% 50% at 50% 0%, rgba(201,164,60,0.08) 0%, transparent 60%), var(--dark-900)',
       display: 'flex', flexDirection: 'column', alignItems: 'center',
-      padding: '0 1rem 2.5rem',
+      padding: '0 1rem 5.5rem',
     }}>
 
       <Header
@@ -760,6 +758,7 @@ export default function AdminPage() {
           </div>
         </div>
       )}
+      <BottomNav active="cashier" />
     </div>
   );
 }

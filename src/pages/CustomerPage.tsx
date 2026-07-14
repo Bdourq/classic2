@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, FormEvent, CSSProperties } from 'react';
 import { findCustomer, createCustomer, getPointsLog, subscribeToCustomer } from '../lib/db';
 import { Customer, PointsLog } from '../types';
+import BottomNav from '../components/BottomNav';
 
 const STORAGE_KEY = 'cc_phone';
 
@@ -175,7 +176,7 @@ export default function CustomerPage() {
   const contentStyle: CSSProperties = {
     width: '100%',
     display: 'flex', flexDirection: 'column', alignItems: 'center',
-    padding: '0 1.25rem 2.5rem',
+    padding: '0 1.25rem 5.5rem',
   };
 
   /* ── طلب رقم الهاتف (أول زيارة) ─────────────────────── */
@@ -222,6 +223,7 @@ export default function CustomerPage() {
         </p>
       </div>
       </div>
+      <BottomNav active="customer" />
     </div>
   );
 
@@ -229,14 +231,16 @@ export default function CustomerPage() {
   if (stage === 'loading') return (
     <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--dark-900)' }}>
       <span className="spinner" style={{ width: 36, height: 36, borderWidth: 3 }} />
+      <BottomNav active="customer" />
     </div>
   );
 
   /* ── خطأ ──────────────────────────────────────────────── */
   if (stage === 'error' || !customer) return (
-    <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '2rem', textAlign: 'center', background: 'var(--dark-900)' }}>
+    <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '2rem 2rem 6rem', textAlign: 'center', background: 'var(--dark-900)' }}>
       <p style={{ color: 'var(--gold-400)', marginBottom: '1rem' }}>{errorMsg || 'حدث خطأ غير متوقع'}</p>
       <button className="cc-btn-outline" style={{ maxWidth: 220 }} onClick={changeNumber}>🔄 محاولة رقم آخر</button>
+      <BottomNav active="customer" />
     </div>
   );
 
@@ -395,6 +399,7 @@ export default function CustomerPage() {
         <button className="cc-btn-ghost" onClick={changeNumber}>🔄 تغيير رقم الهاتف</button>
       </div>
       </div>
+      <BottomNav active="customer" />
     </div>
   );
 }
