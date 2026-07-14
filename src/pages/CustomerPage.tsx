@@ -63,18 +63,11 @@ function formatActivityTime(iso: string): string {
   return `${d.toLocaleDateString('ar-JO', { day: 'numeric', month: 'short' })} ${time}`;
 }
 
-/* ─── الهيدر الثابت أعلى الصفحة: بانر بعرض الصفحة الكامل بلوجو + عنوان "نقاطي" ──── */
+/* ─── الهيدر الثابت أعلى الصفحة: لوجو بعرض الصفحة الكامل ──── */
 function Hero() {
   return (
     <div className="cc-hero-banner anim-in">
-      <img src="/logo.jpg" alt="Classic Cafe" className="cc-logo" style={{ marginBottom: '1.1rem' }} />
-      <h1 className="cc-title" style={{ margin: '0 0 0.3rem', fontSize: '1.9rem' }}>
-        نقاطي
-      </h1>
-      <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-        <span className="cc-eyebrow" style={{ color: 'var(--gold-400)' }}>CLASSIC CAFE</span>
-        {' — نظام الولاء'}
-      </p>
+      <img src="/logo.jpg" alt="Classic Cafe" className="cc-logo-full" />
     </div>
   );
 }
