@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, FormEvent, CSSProperties } from 'react';
-import { findCustomer, createCustomer, subscribeToCustomer } from '../lib/db';
-import { Customer } from '../types';
+import { findCustomer, createCustomer, getPointsLog, subscribeToCustomer } from '../lib/db';
+import { Customer, PointsLog } from '../types';
 
 const STORAGE_KEY = 'cc_phone';
 
@@ -109,6 +109,7 @@ export default function CustomerPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const [customer, setCustomer]   = useState<Customer | null>(null);
+  const [log, setLog]             = useState<PointsLog[]>([]);
   const [errorMsg, setErrorMsg]   = useState('');
 
   const loadData = useCallback(async (p: string, _flash = false, name?: string) => {
@@ -116,6 +117,8 @@ export default function CustomerPage() {
       let c = await findCustomer(p);
       if (!c) c = await createCustomer(p, name);
       setCustomer(c);
+      const l = await getPointsLog(p);
+      setLog(l.slice(0, 50));
       setStage('ready');
     } catch (e: any) {
       setErrorMsg(e?.message ?? 'حدث خطأ أثناء تحميل البيانات');
@@ -158,7 +161,7 @@ export default function CustomerPage() {
 
   function changeNumber() {
     localStorage.removeItem(STORAGE_KEY);
-    setCustomer(null); setPhone(''); setPhoneInput(''); setNameInput('');
+    setCustomer(null); setLog([]); setPhone(''); setPhoneInput(''); setNameInput('');
     setStage('need-phone');
   }
 
@@ -291,6 +294,102 @@ export default function CustomerPage() {
         </div>
       </div>
 
+
+      {/* سجل الإضافات */}
+      {(() => {
+        const additions = log.filter(l => l.action === 'add');
+        const fmt = (iso: string) => new Date(iso).toLocaleString('ar-JO', {
+          day: 'numeric', month: 'short', year: 'numeric',
+          hour: '2-digit', minute: '2-digit',
+        });
+        return (
+          <div className="cc-card anim-in" style={{ width: '100%', maxWidth: '420px', marginTop: '0.85rem', padding: '1.5rem' }}>
+            <p style={{ margin: '0 0 0.9rem', fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.98rem' }}>
+              📈 سجل النقاط المضافة
+              {additions.length > 0 && (
+                <span style={{ marginRight: '0.5rem', fontSize: '0.78rem', color: 'var(--text-dim)', fontWeight: 400 }}>
+                  ({additions.length})
+                </span>
+              )}
+            </p>
+            {additions.length === 0 ? (
+              <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.88rem', margin: '0.5rem 0' }}>
+                لا توجد نقاط مضافة بعد
+              </p>
+            ) : additions.map((entry, i) => (
+              <div key={entry.id} style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '0.65rem 0',
+                borderBottom: i < additions.length - 1 ? '1px solid rgba(201,164,60,0.1)' : 'none',
+              }}>
+                <div>
+                  <span style={{
+                    display: 'inline-block', fontSize: '0.7rem', fontWeight: 700,
+                    padding: '0.15rem 0.45rem', borderRadius: '0.35rem', marginBottom: '0.25rem',
+                    background: 'rgba(201,164,60,0.12)', color: 'var(--gold-400)',
+                  }}>
+                    إضافة نقاط
+                  </span>
+                  <span style={{ display: 'block', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                    {fmt(entry.createdAt)}
+                  </span>
+                </div>
+                <span style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--gold-300)' }}>
+                  +{entry.points} نقطة
+                </span>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
+
+      {/* سجل الاستبدالات */}
+      {(() => {
+        const redemptions = log.filter(l => l.action === 'redeem');
+        const fmt = (iso: string) => new Date(iso).toLocaleString('ar-JO', {
+          day: 'numeric', month: 'short', year: 'numeric',
+          hour: '2-digit', minute: '2-digit',
+        });
+        return (
+          <div className="cc-card anim-in" style={{ width: '100%', maxWidth: '420px', marginTop: '0.85rem', padding: '1.5rem' }}>
+            <p style={{ margin: '0 0 0.9rem', fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.98rem' }}>
+              🎁 سجل الاستبدالات
+              {redemptions.length > 0 && (
+                <span style={{ marginRight: '0.5rem', fontSize: '0.78rem', color: 'var(--text-dim)', fontWeight: 400 }}>
+                  ({redemptions.length})
+                </span>
+              )}
+            </p>
+            {redemptions.length === 0 ? (
+              <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.88rem', margin: '0.5rem 0' }}>
+                لا توجد استبدالات بعد
+              </p>
+            ) : redemptions.map((entry, i) => (
+              <div key={entry.id} style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '0.65rem 0',
+                borderBottom: i < redemptions.length - 1 ? '1px solid rgba(201,164,60,0.1)' : 'none',
+              }}>
+                <div>
+                  <span style={{
+                    display: 'inline-block', fontSize: '0.7rem', fontWeight: 700,
+                    padding: '0.15rem 0.45rem', borderRadius: '0.35rem', marginBottom: '0.25rem',
+                    background: 'rgba(229,115,115,0.12)', color: '#E57373',
+                  }}>
+                    استبدال قهوة ☕
+                  </span>
+                  <span style={{ display: 'block', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                    {fmt(entry.createdAt)}
+                  </span>
+                </div>
+                <span style={{ fontWeight: 800, fontSize: '1rem', color: '#E5A05C' }}>
+                  −{Math.abs(entry.points)} نقطة
+                </span>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
 
       <div style={{ display: 'flex', gap: '1.25rem', marginTop: '1.5rem' }}>
         <button className="cc-btn-ghost" onClick={changeNumber}>🔄 تغيير رقم الهاتف</button>
