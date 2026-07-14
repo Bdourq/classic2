@@ -69,6 +69,11 @@ export default function AdminPage() {
   const [deletingPhone, setDeletingPhone]   = useState<string | null>(null);
   const [deleteError, setDeleteError]       = useState('');
 
+  // تفاصيل عميل منتقى من القائمة
+  const [detailCustomer, setDetailCustomer] = useState<Customer | null>(null);
+  const [detailLog, setDetailLog]           = useState<PointsLog[]>([]);
+  const [detailLoading, setDetailLoading]   = useState(false);
+
   /* ── جلب قائمة العملاء عند فتح القسم ─────────────────── */
   async function loadAllCustomers() {
     setListLoading(true); setListError('');
@@ -194,6 +199,15 @@ export default function AdminPage() {
     } catch (e: any) {
       setLookupError(e?.message ?? 'خطأ أثناء الاستعلام');
     } finally { setLookupLoading(false); }
+  }
+
+  /* ── فتح تفاصيل عميل من القائمة ──────────────────────── */
+  async function openCustomerDetail(c: Customer) {
+    setDetailCustomer(c);
+    setDetailLoading(true);
+    try { setDetailLog(await getPointsLog(c.phone)); }
+    catch { setDetailLog([]); }
+    finally { setDetailLoading(false); }
   }
 
   /* ── حذف عميل غير نشط (لم تُضف له نقاط خلال 30 يوماً) ── */
@@ -698,13 +712,17 @@ export default function AdminPage() {
                             borderBottom: i < filtered.length - 1 ? '1px solid rgba(201,164,60,0.1)' : 'none',
                           }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
-                              <div style={{ flex: 1, minWidth: 0 }}>
-                                {/* الاسم — دائم الظهور */}
+                              {/* الجانب الأيسر — قابل للضغط لفتح التفاصيل */}
+                              <div
+                                style={{ flex: 1, minWidth: 0, cursor: 'pointer' }}
+                                onClick={() => openCustomerDetail(c)}
+                              >
+                                {/* الاسم */}
                                 <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)', display: 'block', marginBottom: '0.1rem' }}>
                                   {c.name || <span style={{ color: 'var(--text-dim)', fontWeight: 400, fontStyle: 'italic' }}>بدون اسم</span>}
                                 </span>
                                 {/* رقم الهاتف */}
-                                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', direction: 'ltr', display: 'block', marginBottom: '0.1rem' }}>
+                                <span style={{ fontSize: '0.8rem', color: 'var(--gold-400)', direction: 'ltr', display: 'block', marginBottom: '0.1rem', textDecoration: 'underline', textDecorationColor: 'rgba(201,164,60,0.4)' }}>
                                   {c.phone}
                                 </span>
                                 {isInactive && (
@@ -715,15 +733,18 @@ export default function AdminPage() {
                               </div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
                                 {/* النقاط */}
-                                <span style={{
-                                  fontWeight: 800, fontSize: '0.95rem',
-                                  color: c.points > 0 ? 'var(--gold-300)' : 'var(--text-dim)',
-                                  background: 'rgba(201,164,60,0.08)',
-                                  border: '1px solid rgba(201,164,60,0.2)',
-                                  borderRadius: '0.5rem', padding: '0.25rem 0.7rem',
-                                  whiteSpace: 'nowrap',
-                                }}>
-                                  {c.points} نقطة
+                                <span
+                                  style={{
+                                    fontWeight: 800, fontSize: '0.95rem',
+                                    color: c.points > 0 ? 'var(--gold-300)' : 'var(--text-dim)',
+                                    background: 'rgba(201,164,60,0.08)',
+                                    border: '1px solid rgba(201,164,60,0.2)',
+                                    borderRadius: '0.5rem', padding: '0.25rem 0.7rem',
+                                    whiteSpace: 'nowrap', cursor: 'pointer',
+                                  }}
+                                  onClick={() => openCustomerDetail(c)}
+                                >
+                                  {c.points} نقطة ›
                                 </span>
                                 {isInactive && !isConfirming && (
                                   <button
@@ -792,6 +813,132 @@ export default function AdminPage() {
       {/* Scanner modal */}
       {state === 'scanning' && (
         <QRScanner onScan={handleScan} onClose={() => setState('idle')} />
+      )}
+
+      {/* ── تفاصيل العميل (overlay) ──────────────────────── */}
+      {detailCustomer && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 50,
+          background: 'rgba(0,0,0,0.75)',
+          display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+          backdropFilter: 'blur(4px)',
+        }}
+          onClick={() => setDetailCustomer(null)}
+        >
+          <div
+            className="cc-card anim-in"
+            style={{
+              width: '100%', maxWidth: '480px',
+              borderRadius: '1.25rem 1.25rem 0 0',
+              padding: '1.5rem 1.5rem 2rem',
+              maxHeight: '90dvh', overflowY: 'auto',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* رأس الـ sheet */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
+              <div>
+                <p style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+                  {detailCustomer.name || <span style={{ color: 'var(--text-dim)', fontStyle: 'italic', fontWeight: 400 }}>بدون اسم</span>}
+                </p>
+                <p style={{ margin: '0.2rem 0 0', fontSize: '0.82rem', color: 'var(--gold-400)', direction: 'ltr' }}>
+                  {detailCustomer.phone}
+                </p>
+              </div>
+              <button
+                className="cc-btn-ghost"
+                style={{ padding: '0.3rem 0.75rem', fontSize: '0.85rem' }}
+                onClick={() => setDetailCustomer(null)}
+              >
+                ✕ إغلاق
+              </button>
+            </div>
+
+            {/* بطاقة الرصيد والاستبدالات */}
+            {(() => {
+              const additions   = detailLog.filter(l => l.action === 'add');
+              const redemptions = detailLog.filter(l => l.action === 'redeem');
+              const totalRedeemed = redemptions.reduce((s, l) => s + Math.abs(l.points), 0);
+              const fmt = (iso: string) =>
+                new Date(iso).toLocaleString('ar-JO', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+              return (
+                <>
+                  {/* إحصائيات سريعة */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.6rem', marginBottom: '1.25rem' }}>
+                    {[
+                      { label: 'الرصيد الحالي', value: `${detailCustomer.points} نقطة`, gold: true },
+                      { label: 'مرات الاستبدال', value: `${redemptions.length} مرة`, gold: false },
+                      { label: 'نقاط مُستبدلة', value: `${totalRedeemed}`, gold: false },
+                    ].map(stat => (
+                      <div key={stat.label} style={{
+                        background: 'rgba(201,164,60,0.07)',
+                        border: '1px solid rgba(201,164,60,0.2)',
+                        borderRadius: '0.75rem', padding: '0.65rem 0.5rem',
+                        textAlign: 'center',
+                      }}>
+                        <p style={{ margin: 0, fontSize: stat.gold ? '1.1rem' : '1rem', fontWeight: 800, color: stat.gold ? 'var(--gold-300)' : 'var(--text-primary)' }}>
+                          {stat.value}
+                        </p>
+                        <p style={{ margin: '0.2rem 0 0', fontSize: '0.68rem', color: 'var(--text-dim)' }}>{stat.label}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {detailLoading ? (
+                    <div style={{ textAlign: 'center', padding: '1.5rem 0' }}>
+                      <span className="spinner" style={{ width: 24, height: 24, borderWidth: 2 }} />
+                    </div>
+                  ) : (
+                    <>
+                      {/* سجل الإضافات */}
+                      <p style={{ margin: '0 0 0.5rem', fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)' }}>
+                        📈 سجل الإضافات {additions.length ? `(${additions.length})` : ''}
+                      </p>
+                      {additions.length === 0 ? (
+                        <p style={{ fontSize: '0.78rem', color: 'var(--text-dim)', marginBottom: '1rem' }}>لا توجد إضافات بعد</p>
+                      ) : (
+                        <div style={{ marginBottom: '1.25rem' }}>
+                          {additions.map((l, i) => (
+                            <div key={l.id} style={{
+                              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                              padding: '0.5rem 0',
+                              borderBottom: i < additions.length - 1 ? '1px solid rgba(201,164,60,0.08)' : 'none',
+                            }}>
+                              <span style={{ fontSize: '0.78rem', color: 'var(--text-dim)' }}>{fmt(l.createdAt)}</span>
+                              <span style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--gold-300)' }}>+{l.points} نقطة</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* سجل الاستبدالات */}
+                      <p style={{ margin: '0 0 0.5rem', fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)' }}>
+                        🎁 سجل الاستبدالات {redemptions.length ? `(${redemptions.length})` : ''}
+                      </p>
+                      {redemptions.length === 0 ? (
+                        <p style={{ fontSize: '0.78rem', color: 'var(--text-dim)' }}>لا توجد استبدالات بعد</p>
+                      ) : (
+                        <div>
+                          {redemptions.map((l, i) => (
+                            <div key={l.id} style={{
+                              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                              padding: '0.5rem 0',
+                              borderBottom: i < redemptions.length - 1 ? '1px solid rgba(201,164,60,0.08)' : 'none',
+                            }}>
+                              <span style={{ fontSize: '0.78rem', color: 'var(--text-dim)' }}>{fmt(l.createdAt)}</span>
+                              <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#E5A05C' }}>−{Math.abs(l.points)} نقطة ☕</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </>
+              );
+            })()}
+          </div>
+        </div>
       )}
     </div>
   );
