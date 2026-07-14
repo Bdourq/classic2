@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, FormEvent } from 'react';
-import { findCustomer, addPoint, redeemCoffee, getAllCustomers, deleteCustomer, getPointsLog } from '../lib/db';
+import { findCustomer, addPoint, getAllCustomers, deleteCustomer, getPointsLog } from '../lib/db';
 import { Customer, PointsLog } from '../types';
 import QRScanner from '../components/QRScanner';
 import Header from '../components/Header';
@@ -48,14 +48,6 @@ export default function AdminPage() {
   const [scannedPhone, setScannedPhone]       = useState('');
   const [scannedCustomer, setScannedCustomer] = useState<Customer | null>(null);
 
-  // lookup & redeem
-  const [lookupPhone, setLookupPhone]       = useState('');
-  const [lookupCustomer, setLookupCustomer] = useState<Customer | null>(null);
-  const [lookupLog, setLookupLog]           = useState<PointsLog[]>([]);
-  const [lookupLoading, setLookupLoading]   = useState(false);
-  const [lookupError, setLookupError]       = useState('');
-  const [redeeming, setRedeeming]           = useState(false);
-  const [redeemMsg, setRedeemMsg]           = useState('');
 
   // customers list
   const [allCustomers, setAllCustomers]     = useState<Customer[]>([]);
@@ -183,24 +175,6 @@ export default function AdminPage() {
     doAddPoints(scannedPhone, pts);
   }
 
-  /* ── الاستعلام عن نقاط العميل ─────────────────────────── */
-  async function handleLookup(e: FormEvent) {
-    e.preventDefault();
-    const phone = lookupPhone.replace(/\s+/g, '').trim();
-    if (!phone) return;
-    setLookupLoading(true); setLookupError(''); setLookupCustomer(null); setLookupLog([]); setRedeemMsg('');
-    try {
-      const c = await findCustomer(phone);
-      if (!c) { setLookupError('العميل غير مسجّل'); }
-      else {
-        setLookupCustomer(c);
-        setLookupLog(await getPointsLog(phone));
-      }
-    } catch (e: any) {
-      setLookupError(e?.message ?? 'خطأ أثناء الاستعلام');
-    } finally { setLookupLoading(false); }
-  }
-
   /* ── فتح تفاصيل عميل من القائمة ──────────────────────── */
   async function openCustomerDetail(c: Customer) {
     setDetailCustomer(c);
@@ -224,20 +198,6 @@ export default function AdminPage() {
     }
   }
 
-  /* ── استبدال قهوة من لوحة الكاشير ────────────────────── */
-  async function handleCashierRedeem() {
-    if (!lookupCustomer || lookupCustomer.points < REDEEM_GOAL) return;
-    setRedeeming(true); setRedeemMsg('');
-    try {
-      await redeemCoffee(lookupCustomer.phone, REDEEM_GOAL);
-      const updated = await findCustomer(lookupCustomer.phone);
-      setLookupCustomer(updated);
-      setLookupLog(await getPointsLog(lookupCustomer.phone));
-      setRedeemMsg('✅ تم الاستبدال — خُصمت 7 نقاط بنجاح');
-    } catch (e: any) {
-      setRedeemMsg('❌ ' + (e?.message ?? 'خطأ أثناء الاستبدال'));
-    } finally { setRedeeming(false); }
-  }
 
   /* ═══════════════════════════════════════════════════════
      شاشة PIN
@@ -382,146 +342,6 @@ export default function AdminPage() {
           >
             📷 مسح QR
           </button>
-        </div>
-      )}
-
-      {/* ── بطاقة الاستعلام والاستبدال ──────────────────── */}
-      {state === 'idle' && (
-        <div className="cc-card anim-in" style={{ width: '100%', maxWidth: '440px', marginTop: '0.85rem', padding: '2rem' }}>
-          <p style={{ margin: '0 0 0.15rem', fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-            🔍 استعلام عن رصيد العميل
-          </p>
-          <p style={{ margin: '0 0 1rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-            أدخل رقم هاتف العميل لمعرفة نقاطه أو إجراء استبدال
-          </p>
-
-          <form onSubmit={handleLookup} style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
-            <input
-              className="cc-input"
-              type="tel"
-              inputMode="numeric"
-              placeholder="رقم هاتف العميل"
-              value={lookupPhone}
-              onChange={(e) => { setLookupPhone(e.target.value); setLookupCustomer(null); setLookupError(''); setRedeemMsg(''); }}
-              style={{ flex: 1, marginBottom: 0, direction: 'ltr', textAlign: 'left' }}
-            />
-            <button
-              className="cc-btn-gold"
-              type="submit"
-              disabled={lookupLoading || !lookupPhone.trim()}
-              style={{ flexShrink: 0, padding: '0 1.1rem' }}
-            >
-              {lookupLoading
-                ? <span className="spinner" style={{ borderTopColor: 'var(--dark-900)', width: 16, height: 16, borderWidth: 2 }} />
-                : 'استعلام'}
-            </button>
-          </form>
-
-          {lookupError && (
-            <p style={{ color: '#E57373', fontSize: '0.85rem', margin: '0 0 0.75rem', textAlign: 'center' }}>{lookupError}</p>
-          )}
-
-          {lookupCustomer && (
-            <div style={{ marginTop: '0.25rem' }}>
-              {/* بيانات العميل */}
-              <div style={{
-                background: 'rgba(201,164,60,0.07)', border: '1px solid rgba(201,164,60,0.22)',
-                borderRadius: '0.85rem', padding: '1rem 1.25rem', marginBottom: '1rem',
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              }}>
-                <div>
-                  {lookupCustomer.name && (
-                    <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)', display: 'block', marginBottom: '0.15rem' }}>
-                      {lookupCustomer.name}
-                    </span>
-                  )}
-                  <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', direction: 'ltr', display: 'block' }}>
-                    {lookupCustomer.phone}
-                  </span>
-                </div>
-                <span style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--gold-300)' }}>
-                  {lookupCustomer.points} / {REDEEM_GOAL} نقاط
-                </span>
-              </div>
-
-              {/* زر الاستبدال */}
-              {lookupCustomer.points >= REDEEM_GOAL ? (
-                <button
-                  className="cc-btn-gold"
-                  onClick={handleCashierRedeem}
-                  disabled={redeeming}
-                  style={{ fontSize: '1rem', padding: '0.9rem' }}
-                >
-                  {redeeming
-                    ? <span className="spinner" style={{ borderTopColor: 'var(--dark-900)' }} />
-                    : `🎁 استبدال قهوة مجانية (${Math.floor(lookupCustomer.points / REDEEM_GOAL)} استبدال متاح)`}
-                </button>
-              ) : (
-                <p style={{
-                  textAlign: 'center', fontSize: '0.85rem',
-                  color: 'var(--text-muted)', margin: 0,
-                }}>
-                  باقي <b style={{ color: 'var(--gold-300)' }}>{REDEEM_GOAL - lookupCustomer.points}</b> نقاط للقهوة المجانية
-                </p>
-              )}
-
-              {redeemMsg && (
-                <div style={{
-                  marginTop: '0.75rem', padding: '0.6rem 1rem',
-                  background: redeemMsg.startsWith('❌') ? 'rgba(229,115,115,0.1)' : 'rgba(201,164,60,0.1)',
-                  border: `1px solid ${redeemMsg.startsWith('❌') ? 'rgba(229,115,115,0.35)' : 'rgba(201,164,60,0.35)'}`,
-                  borderRadius: '0.75rem',
-                  color: redeemMsg.startsWith('❌') ? '#E57373' : 'var(--gold-300)',
-                  fontWeight: 600, fontSize: '0.88rem', textAlign: 'center',
-                }}>
-                  {redeemMsg}
-                </div>
-              )}
-
-              {/* سجل الإضافات والاستبدالات */}
-              {(() => {
-                const additions   = lookupLog.filter(l => l.action === 'add');
-                const redemptions = lookupLog.filter(l => l.action === 'redeem');
-                const fmt = (iso: string) => new Date(iso).toLocaleString('ar-JO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-                const renderRows = (rows: PointsLog[], color: string) => (
-                  <div style={{ maxHeight: '180px', overflowY: 'auto' }}>
-                    {rows.map((l, i) => (
-                      <div key={l.id} style={{
-                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                        padding: '0.4rem 0.1rem',
-                        borderBottom: i < rows.length - 1 ? '1px solid rgba(201,164,60,0.08)' : 'none',
-                      }}>
-                        <span style={{ fontSize: '0.76rem', color: 'var(--text-dim)' }}>{fmt(l.createdAt)}</span>
-                        <span style={{ fontSize: '0.85rem', fontWeight: 700, color }}>
-                          {l.action === 'add' ? '+' : '-'}{Math.abs(l.points)} نقطة
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                );
-                return (
-                  <div style={{ marginTop: '1.25rem', display: 'grid', gap: '0.9rem' }}>
-                    <div>
-                      <p style={{ margin: '0 0 0.4rem', fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-muted)' }}>
-                        📈 سجل الإضافات {additions.length ? `(${additions.length})` : ''}
-                      </p>
-                      {additions.length
-                        ? renderRows(additions, 'var(--gold-300)')
-                        : <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-dim)' }}>لا توجد إضافات بعد</p>}
-                    </div>
-                    <div>
-                      <p style={{ margin: '0 0 0.4rem', fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-muted)' }}>
-                        🎁 سجل الاستبدالات {redemptions.length ? `(${redemptions.length})` : ''}
-                      </p>
-                      {redemptions.length
-                        ? renderRows(redemptions, '#E5A05C')
-                        : <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-dim)' }}>لا توجد استبدالات بعد</p>}
-                    </div>
-                  </div>
-                );
-              })()}
-            </div>
-          )}
         </div>
       )}
 
