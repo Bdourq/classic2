@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, FormEvent, CSSProperties } from 'react';
-import { findCustomer, createCustomer, getPointsLog, subscribeToCustomer } from '../lib/db';
-import { Customer, PointsLog } from '../types';
+import { findCustomer, createCustomer, subscribeToCustomer } from '../lib/db';
+import { Customer } from '../types';
 
 const STORAGE_KEY = 'cc_phone';
 
@@ -45,23 +45,6 @@ function PointsBadge({ points }: { points: number }) {
   );
 }
 
-/* ─── تنسيق وقت النشاط: اليوم / أمس / تاريخ ───────────── */
-function formatActivityTime(iso: string): string {
-  const d = new Date(iso);
-  const now = new Date();
-  const time = d.toLocaleTimeString('ar-JO', { hour: '2-digit', minute: '2-digit' });
-
-  const sameDay = (a: Date, b: Date) =>
-    a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
-
-  if (sameDay(d, now)) return `اليوم ${time}`;
-
-  const yesterday = new Date(now);
-  yesterday.setDate(now.getDate() - 1);
-  if (sameDay(d, yesterday)) return `أمس ${time}`;
-
-  return `${d.toLocaleDateString('ar-JO', { day: 'numeric', month: 'short' })} ${time}`;
-}
 
 /* ─── الهيدر الثابت أعلى الصفحة: لوجو بعرض الصفحة الكامل ──── */
 function Hero() {
@@ -126,24 +109,13 @@ export default function CustomerPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const [customer, setCustomer]   = useState<Customer | null>(null);
-  const [log, setLog]             = useState<PointsLog[]>([]);
   const [errorMsg, setErrorMsg]   = useState('');
-  const [flashNew, setFlashNew]   = useState(false);
-  const [flashPoints, setFlashPoints] = useState(0);
 
-  const loadData = useCallback(async (p: string, flash = false, name?: string) => {
+  const loadData = useCallback(async (p: string, _flash = false, name?: string) => {
     try {
       let c = await findCustomer(p);
       if (!c) c = await createCustomer(p, name);
-      setCustomer(prev => {
-        if (flash && prev && c!.points > prev.points) {
-          setFlashPoints(c!.points - prev.points);
-          setFlashNew(true);
-        }
-        return c;
-      });
-      const l = await getPointsLog(p);
-      setLog(l.slice(0, 20));
+      setCustomer(c);
       setStage('ready');
     } catch (e: any) {
       setErrorMsg(e?.message ?? 'حدث خطأ أثناء تحميل البيانات');
@@ -170,10 +142,6 @@ export default function CustomerPage() {
     return unsub;
   }, [phone, loadData]);
 
-  useEffect(() => {
-    if (flashNew) { const t = setTimeout(() => setFlashNew(false), 2800); return () => clearTimeout(t); }
-  }, [flashNew]);
-
   function handlePhoneSubmit(e: FormEvent) {
     e.preventDefault();
     const cleaned = phoneInput.replace(/\s+/g, '').trim();
@@ -190,7 +158,7 @@ export default function CustomerPage() {
 
   function changeNumber() {
     localStorage.removeItem(STORAGE_KEY);
-    setCustomer(null); setLog([]); setPhone(''); setPhoneInput(''); setNameInput('');
+    setCustomer(null); setPhone(''); setPhoneInput(''); setNameInput('');
     setStage('need-phone');
   }
 
@@ -279,7 +247,7 @@ export default function CustomerPage() {
 
       {/* بطاقة الرصيد */}
       <div
-        className={`cc-card anim-in${flashNew ? ' pulse-gold' : ''}`}
+        className="cc-card anim-in"
         style={{ width: '100%', maxWidth: '420px', padding: '2rem', textAlign: 'center' }}
       >
         <p style={{ margin: '0 0 0.2rem', fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)' }}>
@@ -312,16 +280,6 @@ export default function CustomerPage() {
           );
         })()}
 
-        {flashNew && (
-          <div style={{
-            marginTop: '0.85rem', padding: '0.6rem 1rem',
-            background: 'rgba(201,164,60,0.12)', border: '1px solid rgba(201,164,60,0.4)',
-            borderRadius: '0.75rem', color: 'var(--gold-300)', fontWeight: 700, fontSize: '0.92rem',
-          }}>
-            +{flashPoints} {flashPoints === 1 ? 'نقطة جديدة أُضيفت' : 'نقاط جديدة أُضيفت'}! ☕
-          </div>
-        )}
-
         {/* معادلة النقاط */}
         <div style={{
           marginTop: '1.1rem',
@@ -333,56 +291,6 @@ export default function CustomerPage() {
         </div>
       </div>
 
-
-      {/* السجل الكامل */}
-      <div className="cc-card anim-in" style={{ width: '100%', maxWidth: '420px', marginTop: '0.85rem', padding: '1.5rem' }}>
-        {/* عنوان */}
-        <div style={{ marginBottom: '0.9rem' }}>
-          <p style={{ margin: 0, fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.98rem' }}>
-            📋 السجل
-          </p>
-        </div>
-
-        {(() => {
-          const filtered = log;
-          if (filtered.length === 0) return (
-            <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.88rem', margin: '0.75rem 0' }}>
-              لا يوجد نشاط بعد
-            </p>
-          );
-          return filtered.map((entry, i) => {
-            const isAdd = entry.action === 'add';
-            const pts   = Math.abs(entry.points);
-            return (
-              <div key={entry.id} style={{
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                padding: '0.65rem 0',
-                borderBottom: i < filtered.length - 1 ? '1px solid rgba(201,164,60,0.1)' : 'none',
-              }}>
-                <div>
-                  <span style={{
-                    display: 'inline-block', fontSize: '0.7rem', fontWeight: 700,
-                    padding: '0.15rem 0.45rem', borderRadius: '0.35rem', marginBottom: '0.2rem',
-                    background: isAdd ? 'rgba(201,164,60,0.12)' : 'rgba(229,115,115,0.12)',
-                    color: isAdd ? 'var(--gold-400)' : '#E57373',
-                  }}>
-                    {isAdd ? 'إضافة نقاط' : 'استبدال'}
-                  </span>
-                  <span style={{ display: 'block', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                    {formatActivityTime(entry.createdAt)}
-                  </span>
-                </div>
-                <span style={{
-                  fontWeight: 800, fontSize: '0.95rem',
-                  color: isAdd ? 'var(--gold-300)' : '#E57373',
-                }}>
-                  {isAdd ? `+${pts}` : `−${pts}`} {pts === 1 ? 'نقطة' : 'نقاط'}
-                </span>
-              </div>
-            );
-          });
-        })()}
-      </div>
 
       <div style={{ display: 'flex', gap: '1.25rem', marginTop: '1.5rem' }}>
         <button className="cc-btn-ghost" onClick={changeNumber}>🔄 تغيير رقم الهاتف</button>
