@@ -62,7 +62,7 @@ export default function AdminPage() {
   const [listLoading, setListLoading]       = useState(false);
   const [listError, setListError]           = useState('');
   const [search, setSearch]                 = useState('');
-  const [showList, setShowList]             = useState(false);
+  const [showList, setShowList]             = useState(true);
 
   // حذف عميل غير نشط
   const [confirmDelete, setConfirmDelete]   = useState<string | null>(null);
@@ -644,11 +644,11 @@ export default function AdminPage() {
               <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.85rem' }}>
                 <input
                   className="cc-input"
-                  type="tel"
-                  placeholder="بحث برقم الهاتف..."
+                  type="text"
+                  placeholder="بحث بالاسم أو رقم الهاتف..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  style={{ flex: 1, marginBottom: 0, direction: 'ltr', textAlign: 'left' }}
+                  style={{ flex: 1, marginBottom: 0 }}
                 />
                 <button
                   className="cc-btn-ghost"
@@ -672,8 +672,9 @@ export default function AdminPage() {
                   <span className="spinner" style={{ width: 24, height: 24, borderWidth: 2 }} />
                 </div>
               ) : (() => {
+                const q = search.trim();
                 const filtered = allCustomers.filter(c =>
-                  !search.trim() || c.phone.includes(search.trim())
+                  !q || c.phone.includes(q) || (c.name ?? '').includes(q)
                 );
                 return filtered.length === 0 ? (
                   <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.88rem', margin: '0.75rem 0' }}>
@@ -696,36 +697,31 @@ export default function AdminPage() {
                             padding: '0.6rem 0.25rem',
                             borderBottom: i < filtered.length - 1 ? '1px solid rgba(201,164,60,0.1)' : 'none',
                           }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <div>
-                                {c.name && (
-                                  <span style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-primary)', display: 'block' }}>
-                                    {c.name}
-                                  </span>
-                                )}
-                                <span style={{
-                                  fontSize: c.name ? '0.78rem' : '0.88rem',
-                                  color: c.name ? 'var(--text-muted)' : 'var(--text-primary)',
-                                  direction: 'ltr', display: 'block',
-                                }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                {/* الاسم — دائم الظهور */}
+                                <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)', display: 'block', marginBottom: '0.1rem' }}>
+                                  {c.name || <span style={{ color: 'var(--text-dim)', fontWeight: 400, fontStyle: 'italic' }}>بدون اسم</span>}
+                                </span>
+                                {/* رقم الهاتف */}
+                                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', direction: 'ltr', display: 'block', marginBottom: '0.1rem' }}>
                                   {c.phone}
                                 </span>
-                                <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)' }}>
-                                  {new Date(c.createdAt).toLocaleDateString('ar-JO', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                  {isInactive && (
-                                    <span style={{ color: '#E5A05C', marginRight: '0.4rem', marginLeft: '0.4rem' }}>
-                                      · غير نشط منذ {inactiveDays} يوم
-                                    </span>
-                                  )}
-                                </span>
+                                {isInactive && (
+                                  <span style={{ fontSize: '0.7rem', color: '#E5A05C' }}>
+                                    غير نشط منذ {inactiveDays} يوم
+                                  </span>
+                                )}
                               </div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+                                {/* النقاط */}
                                 <span style={{
-                                  fontWeight: 800, fontSize: '0.92rem',
+                                  fontWeight: 800, fontSize: '0.95rem',
                                   color: c.points > 0 ? 'var(--gold-300)' : 'var(--text-dim)',
                                   background: 'rgba(201,164,60,0.08)',
                                   border: '1px solid rgba(201,164,60,0.2)',
-                                  borderRadius: '0.5rem', padding: '0.2rem 0.6rem',
+                                  borderRadius: '0.5rem', padding: '0.25rem 0.7rem',
+                                  whiteSpace: 'nowrap',
                                 }}>
                                   {c.points} نقطة
                                 </span>
